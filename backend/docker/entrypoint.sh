@@ -1,10 +1,21 @@
 #!/bin/sh
 
-export PORT="${PORT:-8000}"
-echo "🚀 Iniciando contenedor Clínica Vida Salud en el puerto: ${PORT}"
+# Determinar puertos de escucha únicos para Nginx (cubre 8000, 80 y cualquier puerto dinámico de Railway)
+PORTS="8000 80"
+if [ -n "$PORT" ] && [ "$PORT" != "8000" ] && [ "$PORT" != "80" ]; then
+    PORTS="$PORTS $PORT"
+fi
 
-# Sustituir variables en la plantilla de Nginx
-envsubst '${PORT}' < /etc/nginx/templates/default.conf.template > /etc/nginx/http.d/default.conf
+LISTEN_DIRECTIVES=""
+for p in $PORTS; do
+    LISTEN_DIRECTIVES="${LISTEN_DIRECTIVES}listen $p; listen [::]:$p; "
+done
+export LISTEN_DIRECTIVES
+
+echo "🚀 Iniciando contenedor Clínica Vida Salud escuchando en puertos: ${PORTS}"
+
+# Sustituir directivas de escucha en la plantilla de Nginx
+envsubst '${LISTEN_DIRECTIVES}' < /etc/nginx/templates/default.conf.template > /etc/nginx/http.d/default.conf
 
 # Crear carpetas temporales de Nginx y permisos
 mkdir -p /run/nginx /var/log/supervisor /var/lib/nginx/tmp /run
