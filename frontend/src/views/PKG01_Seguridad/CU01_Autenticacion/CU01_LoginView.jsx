@@ -138,7 +138,7 @@ export const CU01_LoginView = ({ onLoginSuccess }) => {
   };
 
   return (
-    <div style={{
+    <div className="login-page-wrapper" style={{
       minHeight: '100vh',
       width: '100vw',
       display: 'flex',
@@ -150,7 +150,7 @@ export const CU01_LoginView = ({ onLoginSuccess }) => {
       fontFamily: 'var(--font-body, "Plus Jakarta Sans", sans-serif)',
     }}>
       {/* TARJETA PRINCIPAL DIVIDIDA MODO SENIOR */}
-      <div style={{
+      <div className="login-card-container" style={{
         width: '100%',
         maxWidth: '1080px',
         minHeight: '640px',
@@ -165,7 +165,7 @@ export const CU01_LoginView = ({ onLoginSuccess }) => {
         {/* ======================================================== */}
         {/* PANEL IZQUIERDO: COLOR AZUL PROFUNDO Y CURVAS ORGÁNICAS  */}
         {/* ======================================================== */}
-        <div style={{
+        <div className="login-left-panel" style={{
           padding: '3.5rem 3rem',
           background: 'linear-gradient(150deg, #0284c7 0%, #0369a1 45%, #075985 100%)',
           display: 'flex',
@@ -314,7 +314,7 @@ export const CU01_LoginView = ({ onLoginSuccess }) => {
         {/* ======================================================== */}
         {/* PANEL DERECHO: FORMULARIO BLANCO MODO SENIOR             */}
         {/* ======================================================== */}
-        <div style={{
+        <div className="login-right-panel" style={{
           padding: '3.5rem 3.5rem',
           display: 'flex',
           flexDirection: 'column',

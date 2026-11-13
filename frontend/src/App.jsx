@@ -4,24 +4,22 @@ import CU01_LoginView from './views/PKG01_Seguridad/CU01_Autenticacion/CU01_Logi
 import MainLayout from './views/layouts/MainLayout';
 
 function App() {
-  // Estado del usuario autenticado (se recupera de localStorage o inicia como admin para acceso inmediato)
+  // Estado del usuario autenticado: exige login inicial (CU01) salvo sesión real guardada
   const [currentUser, setCurrentUser] = useState(() => {
     const saved = localStorage.getItem('clinica_user');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        // Exigir token real de sesión y descartar tokens mock antiguos
+        if (parsed?.token && parsed.token !== 'demo_session_token_2026') {
+          return parsed;
+        }
       } catch (e) {
-        return null;
+        // Error de parseo
       }
+      localStorage.removeItem('clinica_user');
     }
-    // Usuario administrador por defecto para acceder directamente al sistema y CU02
-    return {
-      id_usuario: 1,
-      username: 'admin',
-      email: 'admin@clinicavidasalud.com',
-      rol: 'ADMINISTRADOR',
-      token: 'demo_session_token_2026',
-    };
+    return null;
   });
 
   // Manejador de Login Exitoso

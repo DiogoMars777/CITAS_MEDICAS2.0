@@ -398,9 +398,9 @@ export const MainLayout = ({ currentUser, onLogout }) => {
             </button>
 
             {/* BREADCRUMB PROFESIONAL */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.82rem' }}>
-              <span style={{ color: '#64748b', fontWeight: 500 }}>{SISTEMA_INFO.nombre}</span>
-              <span style={{ color: '#cbd5e1' }}>/</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem', overflow: 'hidden' }}>
+              <span className="hide-on-mobile" style={{ color: '#64748b', fontWeight: 500, whiteSpace: 'nowrap' }}>{SISTEMA_INFO.nombre}</span>
+              <span className="hide-on-mobile" style={{ color: '#cbd5e1' }}>/</span>
               <span style={{
                 padding: '2px 8px',
                 background: '#e0f2fe',
@@ -409,20 +409,29 @@ export const MainLayout = ({ currentUser, onLogout }) => {
                 borderRadius: '6px',
                 fontWeight: 700,
                 fontSize: '0.72rem',
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
               }}>
                 {activeCUInfo.pkg.codigo}
               </span>
               <span style={{ color: '#cbd5e1' }}>/</span>
-              <span style={{ color: '#0f172a', fontWeight: 700 }}>
+              <span className="breadcrumb-cu-title" style={{
+                color: '#0f172a',
+                fontWeight: 700,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                maxWidth: '220px',
+              }}>
                 {activeCUInfo.cu.numero}: {activeCUInfo.cu.titulo}
               </span>
             </div>
           </div>
 
           {/* LADO DERECHO: HORA BOLIVIANA Y USUARIO */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexShrink: 0 }}>
             {/* HORA BOLIVIA PILL */}
-            <div style={{
+            <div className="hide-on-mobile" style={{
               display: 'flex',
               alignItems: 'center',
               gap: '0.45rem',
@@ -465,8 +474,8 @@ export const MainLayout = ({ currentUser, onLogout }) => {
               }}>
                 {(currentUser?.username || 'A')[0].toUpperCase()}
               </div>
-              <span style={{ fontWeight: 600, color: '#0f172a' }}>{currentUser?.username || 'Admin'}</span>
-              <span style={{
+              <span className="hide-on-mobile" style={{ fontWeight: 600, color: '#0f172a' }}>{currentUser?.username || 'Admin'}</span>
+              <span className="hide-on-mobile" style={{
                 fontSize: '0.68rem',
                 padding: '1px 6px',
                 borderRadius: '4px',

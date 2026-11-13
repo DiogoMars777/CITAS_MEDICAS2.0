@@ -171,24 +171,26 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* ==========================================================================
-   RESPONSIVE LAYOUT & UTILITY CLASSES
+   RESPONSIVE LAYOUT & UTILITY CLASSES (SENIOR RESPONSIVE ARCHITECTURE)
    ========================================================================== */
 
-@media (max-width: 768px) {
+/* Breakpoint 1: Tablets & Pantallas Medianas (<= 1024px) */
+@media (max-width: 1024px) {
   .app-sidebar {
     position: fixed !important;
-    left: -285px !important;
+    left: -320px !important;
     top: 0 !important;
     bottom: 0 !important;
     height: 100vh !important;
-    width: 285px !important;
-    min-width: 285px !important;
-    z-index: 100 !important;
-    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    width: 310px !important;
+    min-width: 310px !important;
+    z-index: 150 !important;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    box-shadow: none !important;
   }
   .app-sidebar.mobile-open {
-    transform: translateX(285px) !important;
-    box-shadow: 0 0 50px rgba(0, 0, 0, 0.5) !important;
+    transform: translateX(320px) !important;
+    box-shadow: 0 0 50px rgba(15, 23, 42, 0.5) !important;
   }
   .hide-on-mobile {
     display: none !important;
@@ -197,6 +199,76 @@ h1, h2, h3, h4, h5, h6 {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
+  }
+  .breadcrumb-cu-title {
+    max-width: 180px !important;
+  }
+}
+
+/* Breakpoint 2: Pantallas de Login y Formularios (<= 920px) */
+@media (max-width: 920px) {
+  .login-page-wrapper {
+    padding: 1rem !important;
+    align-items: flex-start !important;
+  }
+  .login-card-container {
+    grid-template-columns: 1fr !important;
+    min-height: auto !important;
+    max-width: 480px !important;
+    margin: 1rem auto !important;
+    border-radius: 20px !important;
+  }
+  .login-left-panel {
+    display: none !important;
+  }
+  .login-right-panel {
+    padding: 2.25rem 1.5rem !important;
+  }
+}
+
+/* Breakpoint 3: Móviles (<= 640px) */
+@media (max-width: 640px) {
+  /* Tablas responsivas automáticas */
+  table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Modales en teléfonos pequeños */
+  div[role="dialog"],
+  .modal-container,
+  .modal-dialog {
+    max-width: 95vw !important;
+    width: 95vw !important;
+    margin: 0.5rem auto !important;
+    padding: 1rem !important;
+  }
+
+  /* Filtros y barras de acciones */
+  .filter-bar,
+  .action-bar-container {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.75rem !important;
+  }
+
+  /* Tarjetas KPI compactas */
+  .kpi-grid,
+  .stats-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem !important;
+  }
+
+  /* Botones full-width en móvil cuando sea apropiado */
+  .mobile-w-full {
+    width: 100% !important;
+  }
+
+  /* Breadcrumb ultra-compacto */
+  .breadcrumb-cu-title {
+    max-width: 130px !important;
   }
 }
 
