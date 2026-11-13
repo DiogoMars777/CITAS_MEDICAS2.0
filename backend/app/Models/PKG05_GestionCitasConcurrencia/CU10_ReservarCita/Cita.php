@@ -91,6 +91,22 @@ class Cita extends Model
     }
 
     /**
+     * Cancelación registrada si la cita fue cancelada
+     */
+    public function cancelacion()
+    {
+        return $this->hasOne(\App\Models\PKG05_GestionCitasConcurrencia\CU12_CancelarCita\CancelacionCita::class, 'id_cita', 'id_cita');
+    }
+
+    /**
+     * Historial de reprogramaciones sufridas por la cita
+     */
+    public function reprogramaciones()
+    {
+        return $this->hasMany(\App\Models\PKG05_GestionCitasConcurrencia\CU11_ReprogramarCita\HistorialReprogramacion::class, 'id_cita', 'id_cita')->orderBy('fecha_operacion', 'asc');
+    }
+
+    /**
      * Último pago activo registrado
      */
     public function ultimoPago()

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, lazy, Suspense } from 'react';
 import {
   Shield,
   Stethoscope,
@@ -23,31 +23,33 @@ import {
   ROLE_PERMISSIONS,
 } from '../../models/navigation/navigationConfig';
 import { useHoraBoliviana } from '../../controllers/PKG01_Seguridad/CU02_BitacoraAuditoria/CU02_BitacoraAuditoriaController';
-import CU02_BitacoraView from '../PKG01_Seguridad/CU02_BitacoraAuditoria/CU02_BitacoraView';
-import CU01_SessionView from '../PKG01_Seguridad/CU01_Autenticacion/CU01_SessionView';
-import CU03_GestionUsuariosView from '../PKG01_Seguridad/CU03_GestionUsuarios/CU03_GestionUsuariosView';
-import CU04_EspecialidadesView from '../PKG02_MedicosEspecialidades/CU04_GestionEspecialidades/CU04_EspecialidadesView';
-import CU05_MedicosView from '../PKG02_MedicosEspecialidades/CU05_GestionMedicos/CU05_MedicosView';
-import CU06_PacientesView from '../PKG03_PacientesHistorial/CU06_RegistroPaciente/CU06_PacientesView';
-import CU07_TurnosView from '../PKG04_AgendasHorarios/CU07_ConfigurarTurnos/CU07_TurnosView';
-import CU08_BloqueosView from '../PKG04_AgendasHorarios/CU08_BloqueosAgenda/CU08_BloqueosView';
-import CU09_DisponibilidadView from '../PKG04_AgendasHorarios/CU09_ConsultarDisponibilidad/CU09_DisponibilidadView';
-import CU10_ReservarCitaView from '../PKG05_GestionCitasConcurrencia/CU10_ReservarCita/CU10_ReservarCitaView';
-import CU11_ReprogramarCitaView from '../PKG05_GestionCitasConcurrencia/CU11_ReprogramarCita/CU11_ReprogramarCitaView';
-import CU12_CancelarCitaView from '../PKG05_GestionCitasConcurrencia/CU12_CancelarCita/CU12_CancelarCitaView';
-import CU13_AsistenciaView from '../PKG05_GestionCitasConcurrencia/CU13_ControlAsistencia/CU13_AsistenciaView';
-import CU23_GestionarPagosView from '../PKG05_GestionCitasConcurrencia/CU23_GestionarPagos/CU23_GestionarPagosView';
-import CU14_AntecedentesView from '../PKG03_PacientesHistorial/CU14_AntecedentesClinicos/CU14_AntecedentesView';
-import CU15_AgendaMedicoView from '../PKG06_AtencionMedica/CU15_AgendaDiariaMedico/CU15_AgendaMedicoView';
-import CU16_ConsultaMedicaView from '../PKG06_AtencionMedica/CU16_AtenderConsulta/CU16_ConsultaMedicaView';
-import CU17_CargarEstudiosView from '../PKG07_Laboratorios/CU17_CargarEstudios/CU17_CargarEstudiosView';
-import CU18_VisualizarEstudiosView from '../PKG07_Laboratorios/CU18_VisualizarEstudios/CU18_VisualizarEstudiosView';
-import CU19_RecordatoriosView from '../PKG08_DashboardReportes/CU19_Recordatorios/CU19_RecordatoriosView';
-import CU20_DashboardView from '../PKG08_DashboardReportes/CU20_Dashboard/CU20_DashboardView';
-import CU21_ReportesView from '../PKG08_DashboardReportes/CU21_Reportes/CU21_ReportesView';
-import CU24_AsistenteVozView from '../PKG08_DashboardReportes/CU24_AsistenteVozIA/CU24_AsistenteVozView';
-import CU22_BackupView from '../PKG01_Seguridad/CU22_BackupRestore/CU22_BackupView';
 import SeniorCUPlaceholder from '../common/SeniorCUPlaceholder';
+
+// Lazy loading para optimizar el bundle inicial y code-splitting modular
+const CU02_BitacoraView = lazy(() => import('../PKG01_Seguridad/CU02_BitacoraAuditoria/CU02_BitacoraView'));
+const CU01_SessionView = lazy(() => import('../PKG01_Seguridad/CU01_Autenticacion/CU01_SessionView'));
+const CU03_GestionUsuariosView = lazy(() => import('../PKG01_Seguridad/CU03_GestionUsuarios/CU03_GestionUsuariosView'));
+const CU04_EspecialidadesView = lazy(() => import('../PKG02_MedicosEspecialidades/CU04_GestionEspecialidades/CU04_EspecialidadesView'));
+const CU05_MedicosView = lazy(() => import('../PKG02_MedicosEspecialidades/CU05_GestionMedicos/CU05_MedicosView'));
+const CU06_PacientesView = lazy(() => import('../PKG03_PacientesHistorial/CU06_RegistroPaciente/CU06_PacientesView'));
+const CU07_TurnosView = lazy(() => import('../PKG04_AgendasHorarios/CU07_ConfigurarTurnos/CU07_TurnosView'));
+const CU08_BloqueosView = lazy(() => import('../PKG04_AgendasHorarios/CU08_BloqueosAgenda/CU08_BloqueosView'));
+const CU09_DisponibilidadView = lazy(() => import('../PKG04_AgendasHorarios/CU09_ConsultarDisponibilidad/CU09_DisponibilidadView'));
+const CU10_ReservarCitaView = lazy(() => import('../PKG05_GestionCitasConcurrencia/CU10_ReservarCita/CU10_ReservarCitaView'));
+const CU11_ReprogramarCitaView = lazy(() => import('../PKG05_GestionCitasConcurrencia/CU11_ReprogramarCita/CU11_ReprogramarCitaView'));
+const CU12_CancelarCitaView = lazy(() => import('../PKG05_GestionCitasConcurrencia/CU12_CancelarCita/CU12_CancelarCitaView'));
+const CU13_AsistenciaView = lazy(() => import('../PKG05_GestionCitasConcurrencia/CU13_ControlAsistencia/CU13_AsistenciaView'));
+const CU23_GestionarPagosView = lazy(() => import('../PKG05_GestionCitasConcurrencia/CU23_GestionarPagos/CU23_GestionarPagosView'));
+const CU14_AntecedentesView = lazy(() => import('../PKG03_PacientesHistorial/CU14_AntecedentesClinicos/CU14_AntecedentesView'));
+const CU15_AgendaMedicoView = lazy(() => import('../PKG06_AtencionMedica/CU15_AgendaDiariaMedico/CU15_AgendaMedicoView'));
+const CU16_ConsultaMedicaView = lazy(() => import('../PKG06_AtencionMedica/CU16_AtenderConsulta/CU16_ConsultaMedicaView'));
+const CU17_CargarEstudiosView = lazy(() => import('../PKG07_Laboratorios/CU17_CargarEstudios/CU17_CargarEstudiosView'));
+const CU18_VisualizarEstudiosView = lazy(() => import('../PKG07_Laboratorios/CU18_VisualizarEstudios/CU18_VisualizarEstudiosView'));
+const CU19_RecordatoriosView = lazy(() => import('../PKG08_DashboardReportes/CU19_Recordatorios/CU19_RecordatoriosView'));
+const CU20_DashboardView = lazy(() => import('../PKG08_DashboardReportes/CU20_Dashboard/CU20_DashboardView'));
+const CU21_ReportesView = lazy(() => import('../PKG08_DashboardReportes/CU21_Reportes/CU21_ReportesView'));
+const CU24_AsistenteVozView = lazy(() => import('../PKG08_DashboardReportes/CU24_AsistenteVozIA/CU24_AsistenteVozView'));
+const CU22_BackupView = lazy(() => import('../PKG01_Seguridad/CU22_BackupRestore/CU22_BackupView'));
 
 // Iconos por paquete
 const PACKAGE_ICONS = {
@@ -64,7 +66,7 @@ const PACKAGE_ICONS = {
 export const MainLayout = ({ currentUser, onLogout }) => {
   // Determinar permisos y configuración según el Rol del usuario autenticado (RBAC)
   const roleKey = useMemo(() => normalizeRole(currentUser?.rol), [currentUser?.rol]);
-  const roleConfig = useMemo(() => ROLE_PERMISSIONS[roleKey] || ROLE_PERMISSIONS.ADMINISTRADOR, [roleKey]);
+  const roleConfig = useMemo(() => ROLE_PERMISSIONS[roleKey] || ROLE_PERMISSIONS.DENEGADO, [roleKey]);
 
   // Caso de uso activo por defecto: inicializa en la vista principal según el rol
   const [activeCUId, setActiveCUId] = useState(() => roleConfig.defaultCU);
@@ -606,7 +608,14 @@ export const MainLayout = ({ currentUser, onLogout }) => {
               </button>
             </div>
           ) : (
-            <>
+            <Suspense fallback={
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '300px', color: '#64748b' }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ width: '32px', height: '32px', border: '3px solid #0284c7', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 12px' }} />
+                  <p style={{ fontSize: '0.9rem' }}>Cargando módulo clínico...</p>
+                </div>
+              </div>
+            }>
               {activeCUId === 'CU24' && <CU24_AsistenteVozView currentUser={currentUser} />}
 
           {activeCUId === 'CU21' && <CU21_ReportesView />}
@@ -702,7 +711,7 @@ export const MainLayout = ({ currentUser, onLogout }) => {
               onNavigateToCU02={() => handleSelectCU('CU02', 'PKG01')}
             />
           )}
-            </>
+            </Suspense>
           )}
         </main>
       </div>

@@ -39,6 +39,14 @@ class Paciente extends Model
     ];
 
     /**
+     * Normalización de CI antes de persistir
+     */
+    public function setCiAttribute($value): void
+    {
+        $this->attributes['ci'] = strtoupper(trim(preg_replace('/\s+/', ' ', (string) $value)));
+    }
+
+    /**
      * Cuenta de usuario vinculada
      */
     public function usuario(): BelongsTo

@@ -90,8 +90,9 @@ class CU13_AsistenciaController extends Controller
 
     /**
      * Registrar llegada (CONFIRMADA), inasistencia (INASISTENCIA) o atención (ATENDIDA)
+     * Enforzado por la máquina de estados TransicionEstadoCitaService
      */
-    public function registrarAsistencia(Request $request, int $id): JsonResponse
+    public function registrarAsistencia(Request $request, int $id, \App\Services\Citas\TransicionEstadoCitaService $transicionService): JsonResponse
     {
         $estadoInput = strtoupper(trim((string) ($request->input('nuevo_estado') ?? $request->input('estado_asistencia'))));
         $request->merge(['nuevo_estado' => $estadoInput]);
@@ -110,42 +111,36 @@ class CU13_AsistenciaController extends Controller
             return response()->json(['success' => false, 'message' => 'Cita no encontrada.'], 404);
         }
 
-        $estadoAnt = $cita->estado_cita;
-        $nuevoEstado = $estadoInput;
-        $usuarioId = $request->user()?->id_usuario ?? 1;
+        try {
+            $citaTransicionada = $transicionService->transicionar(
+                $cita,
+                $estadoInput,
+                $request->user(),
+                $request->input('observaciones')
+            );
 
-        $cita->estado_cita = $nuevoEstado;
-        $cita->fecha_actualizacion = Carbon::now('America/La_Paz');
-        $cita->save();
+            $msg = match ($estadoInput) {
+                'CONFIRMADA'   => "Llegada del paciente confirmada. Pasó a sala de espera.",
+                'INASISTENCIA' => "Inasistencia registrada para la cita #{$cita->codigo_cita}.",
+                'ATENDIDA'     => "Cita marcada como atendida.",
+                default        => "Estado actualizado a {$estadoInput}."
+            };
 
-        BitacoraAuditoria::registrar(
-            'PKG05_GestionCitasConcurrencia',
-            'citas',
-            $cita->id_cita,
-            'UPDATE',
-            ['estado_cita' => $estadoAnt],
-            [
-                'estado_cita'   => $nuevoEstado,
-                'observaciones' => $request->input('observaciones'),
-                'paciente'      => $cita->paciente?->nombre_completo,
-                'codigo_cita'   => $cita->codigo_cita,
-            ],
-            $usuarioId,
-            $request->ip(),
-            $request->userAgent()
-        );
-
-        $msg = match ($nuevoEstado) {
-            'CONFIRMADA'   => "Llegada del paciente confirmada. Pasó a sala de espera.",
-            'INASISTENCIA' => "Inasistencia registrada para la cita #{$cita->codigo_cita}.",
-            'ATENDIDA'     => "Cita marcada como atendida.",
-            default        => "Estado actualizado a {$nuevoEstado}."
-        };
-
-        return response()->json([
-            'success' => true,
-            'message' => $msg,
-            'data'    => $cita,
-        ]);
+            return response()->json([
+                'success' => true,
+                'message' => $msg,
+                'data'    => $citaTransicionada,
+            ]);
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], $e->getStatusCode());
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al procesar el cambio de estado de la cita: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 }

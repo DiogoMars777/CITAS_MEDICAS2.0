@@ -13,6 +13,7 @@ import {
   Filter,
   User,
   Stethoscope,
+  X,
 } from 'lucide-react';
 
 import { ESTADOS_CITA } from '../../../models/PKG05_GestionCitasConcurrencia/CU10_ReservarCita/CitaModel';

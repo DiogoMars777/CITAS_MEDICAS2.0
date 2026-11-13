@@ -150,6 +150,7 @@ class CU15_AgendaMedicoController extends Controller
         }
 
         return response()->json([
+            'success'       => true,
             'status'        => 'success',
             'case_of_use'   => 'CU15_AgendaDiariaMedico',
             'medico'        => [

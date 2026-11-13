@@ -141,6 +141,11 @@ class CU06_PacienteController extends Controller
                 ], 403);
             }
         }
+
+        // FASE 10: Normalización de CI antes de validar unicidad
+        if ($request->has('ci')) {
+            $request->merge(['ci' => strtoupper(trim(preg_replace('/\s+/', ' ', (string) $request->input('ci'))))]);
+        }
         $rules = [
             'ci'               => 'required|string|min:4|max:20|unique:pacientes,ci',
             'nombres'          => 'required|string|min:2|max:80',

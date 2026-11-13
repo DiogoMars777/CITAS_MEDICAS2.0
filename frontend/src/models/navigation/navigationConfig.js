@@ -363,6 +363,7 @@ export const PACKAGES_CONFIG = [
 
 /**
  * Normaliza el nombre del rol proveniente de la base de datos o API.
+ * Acceso por defecto denegado si no coincide con un rol oficial.
  */
 export const normalizeRole = (role) => {
   const r = (role || '').toUpperCase().trim();
@@ -370,13 +371,23 @@ export const normalizeRole = (role) => {
   if (r.includes('MEDIC') || r.includes('DOCTOR')) return 'MEDICO';
   if (r.includes('RECEP')) return 'RECEPCIONISTA';
   if (r.includes('PACIENT') || r.includes('CLIENT')) return 'PACIENTE';
-  return 'ADMINISTRADOR';
+  return 'DENEGADO';
 };
 
 /**
  * Matriz de Permisos y Vistas por Rol (Role-Based Access Control)
  */
 export const ROLE_PERMISSIONS = {
+  DENEGADO: {
+    nombre: 'Acceso Denegado',
+    portalTitle: 'Acceso Restringido',
+    defaultCU: 'CU01',
+    allowedCUs: ['CU01'],
+    badgeColor: '#dc2626',
+    badgeBg: '#fee2e2',
+    badgeBorder: '#fca5a5',
+    descripcion: 'Su rol no se encuentra autorizado en el sistema.',
+  },
   ADMINISTRADOR: {
     nombre: 'Administrador General',
     portalTitle: 'Panel de Administración Global',
