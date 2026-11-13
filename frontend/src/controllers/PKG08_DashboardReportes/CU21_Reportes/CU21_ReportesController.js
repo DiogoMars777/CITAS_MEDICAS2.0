@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
+import { API_ENDPOINTS } from '@/config/api';
 
-const API_BASE = 'http://localhost:8000/api/reportes';
+const API_BASE = API_ENDPOINTS.reportes;
 
 /**
  * Controller Hook para CU21 - Generar Reportes Clínicos y Estadísticos

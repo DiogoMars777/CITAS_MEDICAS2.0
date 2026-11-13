@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
+import { API_ENDPOINTS } from '@/config/api';
 
-const API_BASE = 'http://localhost:8000/api/antecedentes-clinicos';
+const API_BASE = API_ENDPOINTS.antecedentes;
 
 /**
  * Controller Hook para CU14 - Registrar y actualizar antecedentes clínicos base

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
+import { API_ENDPOINTS } from '@/config/api';
 
-const API_BASE = 'http://localhost:8000/api/disponibilidad';
+const API_BASE = API_ENDPOINTS.disponibilidad;
 
 export const useCU09DisponibilidadController = () => {
   // Filtros principales

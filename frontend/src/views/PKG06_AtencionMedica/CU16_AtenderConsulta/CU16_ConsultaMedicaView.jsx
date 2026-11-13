@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_ENDPOINTS } from '@/config/api';
 import {
   Stethoscope,
   User,
@@ -95,7 +96,7 @@ export const CU16_ConsultaMedicaView = ({ initialCitaId = 2, onBackToAgenda }) =
 
   // Cargar lista de citas del día para permitir cambiar de paciente si se entra directo
   useEffect(() => {
-    fetch('http://localhost:8000/api/agenda-medica/hoy?id_medico=1')
+    fetch(`${API_ENDPOINTS.agendaMedica}/hoy?id_medico=1`)
       .then((res) => res.json())
       .then((data) => {
         if (data.status === 'success' && data.data?.bloques) {

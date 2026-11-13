@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { API_ENDPOINTS } from '@/config/api';
 import {
   Ban,
   Plus,
@@ -48,7 +49,7 @@ export const CU08_BloqueosView = () => {
       if (filterMedico) params.append('id_medico', filterMedico);
       if (filterTipo) params.append('tipo_bloqueo', filterTipo);
 
-      const res = await fetch(`http://localhost:8000/api/bloqueos?${params.toString()}`);
+      const res = await fetch(`${API_ENDPOINTS.bloqueos}?${params.toString()}`);
       if (!res.ok) throw new Error('Error al cargar bloqueos de agenda.');
       const json = await res.json();
       setBloqueos(json.data.data || []);
@@ -62,7 +63,7 @@ export const CU08_BloqueosView = () => {
 
   const fetchMeta = useCallback(async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/bloqueos/meta');
+      const res = await fetch(`${API_ENDPOINTS.bloqueos}/meta`);
       if (res.ok) {
         const json = await res.json();
         setMedicosMeta(json.medicos || []);
@@ -87,7 +88,7 @@ export const CU08_BloqueosView = () => {
     setError(null);
 
     try {
-      const res = await fetch('http://localhost:8000/api/bloqueos', {
+      const res = await fetch(API_ENDPOINTS.bloqueos, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify(formData),
@@ -121,7 +122,7 @@ export const CU08_BloqueosView = () => {
 
     setActionLoading(true);
     try {
-      const res = await fetch(`http://localhost:8000/api/bloqueos/${idBloqueo}`, {
+      const res = await fetch(`${API_ENDPOINTS.bloqueos}/${idBloqueo}`, {
         method: 'DELETE',
         headers: { Accept: 'application/json' },
       });

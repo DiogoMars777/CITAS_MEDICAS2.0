@@ -1,0 +1,44 @@
+server {
+    listen ${PORT};
+    server_name _;
+    root /var/www/html/public;
+    index index.php index.html;
+
+    client_max_body_size 64M;
+
+    # Gzip Compression
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript image/svg+xml;
+
+    # Headers de seguridad
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    # Endpoint de verificación de salud (Health Check para Railway)
+    location = /up {
+        try_files $uri /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        fastcgi_pass 127.0.0.1:9000;
+        fastcgi_index index.php;
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        include fastcgi_params;
+        fastcgi_read_timeout 300;
+        fastcgi_buffer_size 128k;
+        fastcgi_buffers 4 256k;
+        fastcgi_busy_buffers_size 256k;
+        fastcgi_hide_header X-Powered-By;
+    }
+
+    # Bloquear acceso a archivos ocultos (ej: .env, .git)
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+}
+

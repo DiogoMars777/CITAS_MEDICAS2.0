@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_ENDPOINTS } from '@/config/api';
 import CU01_LoginView from './views/PKG01_Seguridad/CU01_Autenticacion/CU01_LoginView';
 import MainLayout from './views/layouts/MainLayout';
 
@@ -33,7 +34,7 @@ function App() {
   const handleLogout = async () => {
     try {
       if (currentUser?.token && currentUser.token !== 'demo_session_token_2026') {
-        await fetch('http://localhost:8000/api/auth/logout', {
+        await fetch(`${API_ENDPOINTS.auth}/logout`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

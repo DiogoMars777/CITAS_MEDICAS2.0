@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
+import { API_ENDPOINTS } from '@/config/api';
 
-const API_BASE = 'http://localhost:8000/api/atencion-medica';
+const API_BASE = API_ENDPOINTS.atencionMedica;
 
 /**
  * Controller Hook para CU16 - Atender consulta y registrar evolución clínica

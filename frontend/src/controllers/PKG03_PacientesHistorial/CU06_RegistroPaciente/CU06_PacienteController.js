@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
+import { API_ENDPOINTS } from '@/config/api';
 
-const API_BASE = 'http://localhost:8000/api/pacientes';
+const API_BASE = API_ENDPOINTS.pacientes;
 
 /**
  * Controller Hook para CU06 - Registro de Pacientes y Apertura en Primera Visita

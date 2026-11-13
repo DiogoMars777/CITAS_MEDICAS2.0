@@ -70,7 +70,7 @@ return new class extends Migration
                 'proximo_respaldo_at'     => $manana,
                 'estado_ultimo_respaldo'  => 'NINGUNO',
                 'mensaje_ultimo_respaldo' => 'Programación diaria configurada automáticamente para las 02:00 AM.',
-                'actualizado_por'         => 1,
+                'actualizado_por'         => DB::table('usuarios')->where('id_usuario', 1)->exists() ? 1 : null,
                 'fecha_creacion'          => Carbon::now('America/La_Paz'),
                 'fecha_actualizacion'     => Carbon::now('America/La_Paz'),
             ]);

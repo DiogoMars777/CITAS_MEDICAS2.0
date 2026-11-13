@@ -14,8 +14,9 @@ import {
 
 import { ESTADOS_CITA } from '../../../models/PKG05_GestionCitasConcurrencia/CU10_ReservarCita/CitaModel';
 import { ModalCancelarCita } from './ModalCancelarCita';
+import { API_ENDPOINTS } from '@/config/api';
 
-const API_BASE = 'http://localhost:8000/api/citas';
+const API_BASE = API_ENDPOINTS.citas;
 
 export const CU12_CancelarCitaView = () => {
   const [citas, setCitas] = useState([]);

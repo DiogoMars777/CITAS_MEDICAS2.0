@@ -13,6 +13,7 @@ import {
   Layers,
 } from 'lucide-react';
 import { getInitialReservaFormState } from '../../../models/PKG05_GestionCitasConcurrencia/CU10_ReservarCita/CitaModel';
+import { API_ENDPOINTS } from '@/config/api';
 
 export const ModalReservarCita = ({
   isOpen,
@@ -69,7 +70,7 @@ export const ModalReservarCita = ({
       setLoadingSlots(true);
       try {
         const res = await fetch(
-          `http://localhost:8000/api/disponibilidad?fecha=${formData.fecha_cita}&id_medico=${formData.id_medico}`
+          `${API_ENDPOINTS.disponibilidad}?fecha=${formData.fecha_cita}&id_medico=${formData.id_medico}`
         );
         if (res.ok) {
           const json = await res.json();

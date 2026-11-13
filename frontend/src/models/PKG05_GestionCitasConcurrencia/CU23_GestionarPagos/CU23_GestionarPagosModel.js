@@ -3,7 +3,9 @@
  * Modelo cliente API REST (Clínica Vida Salud - 2026)
  */
 
-const API_BASE = 'http://localhost:8000/api/pagos';
+import { API_ENDPOINTS } from '@/config/api';
+
+const API_BASE = API_ENDPOINTS.pagos;
 
 async function fetchSeguro(url, options = {}) {
   const res = await fetch(url, {

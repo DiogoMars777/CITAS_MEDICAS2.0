@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
+import { API_ENDPOINTS } from '@/config/api';
 
-const API_BASE = 'http://localhost:8000/api/agenda-medica';
+const API_BASE = API_ENDPOINTS.agendaMedica;
 
 /**
  * Controller Hook para CU15 - Visualizar agenda médica diaria

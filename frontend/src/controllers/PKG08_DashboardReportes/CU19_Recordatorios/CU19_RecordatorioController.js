@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
+import { API_ENDPOINTS } from '@/config/api';
 
-const API_BASE = 'http://localhost:8000/api/recordatorios';
+const API_BASE = API_ENDPOINTS.recordatorios;
 
 /**
  * Controller Hook para CU19 - Gestionar recordatorios y notificaciones

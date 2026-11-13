@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
+import { API_ENDPOINTS } from '@/config/api';
 
-const API_BASE = 'http://localhost:8000/api/turnos';
+const API_BASE = API_ENDPOINTS.turnos;
 
 /**
  * Controller Hook para CU07 - Configuración de Agenda y Horarios Médicos (15 min)

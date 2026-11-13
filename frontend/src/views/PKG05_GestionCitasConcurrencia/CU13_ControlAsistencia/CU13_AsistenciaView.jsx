@@ -16,8 +16,9 @@ import {
 } from 'lucide-react';
 
 import { ESTADOS_CITA } from '../../../models/PKG05_GestionCitasConcurrencia/CU10_ReservarCita/CitaModel';
+import { API_ENDPOINTS } from '@/config/api';
 
-const API_BASE = 'http://localhost:8000/api/asistencia';
+const API_BASE = API_ENDPOINTS.asistencia;
 
 export const CU13_AsistenciaView = () => {
   const hoyStr = new Date().toISOString().split('T')[0];

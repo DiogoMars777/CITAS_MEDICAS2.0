@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
+import { API_ENDPOINTS } from '@/config/api';
 
-const API_BASE_URL = 'http://localhost:8000/api/audit';
+const API_BASE_URL = API_ENDPOINTS.audit;
 
 /**
  * Controller Hook para CU02 - Consultar Bitácora de Auditoría

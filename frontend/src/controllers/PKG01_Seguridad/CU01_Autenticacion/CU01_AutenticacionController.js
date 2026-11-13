@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
+import { API_ENDPOINTS } from '@/config/api';
 
-const API_BASE_URL = 'http://localhost:8000/api/auth';
+const API_BASE_URL = API_ENDPOINTS.auth;
 
 /**
  * Controller Hook para CU01 - Autenticación y Recuperación de Contraseña

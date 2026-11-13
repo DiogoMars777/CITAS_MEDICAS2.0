@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
+import { API_ENDPOINTS } from '@/config/api';
 
-const API_BASE = 'http://localhost:8000/api/usuarios';
+const API_BASE = API_ENDPOINTS.usuarios;
 
 /**
  * Controller Hook para CU03 - Gestión de Usuarios Internos, Roles y Permisos

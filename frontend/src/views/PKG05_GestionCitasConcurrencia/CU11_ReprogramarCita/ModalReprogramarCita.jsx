@@ -11,6 +11,7 @@ import {
   User,
 } from 'lucide-react';
 import { getNextWorkingDate } from '../../../models/PKG05_GestionCitasConcurrencia/CU10_ReservarCita/CitaModel';
+import { API_ENDPOINTS } from '@/config/api';
 
 export const ModalReprogramarCita = ({
   isOpen,
@@ -57,7 +58,7 @@ export const ModalReprogramarCita = ({
       setLoadingSlots(true);
       try {
         const res = await fetch(
-          `http://localhost:8000/api/disponibilidad?fecha=${fechaNueva}&id_medico=${idMedicoNuevo}`
+          `${API_ENDPOINTS.disponibilidad}?fecha=${fechaNueva}&id_medico=${idMedicoNuevo}`
         );
         if (res.ok) {
           const json = await res.json();

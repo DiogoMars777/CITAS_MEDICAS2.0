@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
+import { API_ENDPOINTS } from '@/config/api';
 
-const API_BASE = 'http://localhost:8000/api/laboratorios/carga';
+const API_BASE = API_ENDPOINTS.laboratoriosCarga;
 
 /**
  * Controller Hook para CU17 - Cargar estudios y resultados de laboratorio

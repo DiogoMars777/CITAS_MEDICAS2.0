@@ -3,7 +3,9 @@
  * Modelo de datos y cliente API REST (Google Gemini API / Backend CVS-2026)
  */
 
-const API_BASE = 'http://localhost:8000/api/ia-asistente';
+import { API_ENDPOINTS } from '@/config/api';
+
+const API_BASE = API_ENDPOINTS.iaAsistente;
 
 /**
  * Función auxiliar para realizar peticiones fetch seguras con parseo de JSON a prueba de fallos

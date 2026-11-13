@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_ENDPOINTS } from '@/config/api';
 import {
   History,
   X,
@@ -23,7 +24,7 @@ export const ModalHistorialCita = ({ isOpen, onClose, cita }) => {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(`http://localhost:8000/api/citas/${cita.id_cita}/historial`);
+        const res = await fetch(`${API_ENDPOINTS.citas}/${cita.id_cita}/historial`);
         if (!res.ok) throw new Error('No se pudo cargar el historial de la cita.');
         const json = await res.json();
         setHistorialData({

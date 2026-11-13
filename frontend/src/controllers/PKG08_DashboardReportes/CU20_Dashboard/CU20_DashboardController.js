@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
+import { API_ENDPOINTS } from '@/config/api';
 
-const API_BASE = 'http://localhost:8000/api/dashboard';
+const API_BASE = API_ENDPOINTS.dashboard;
 
 /**
  * Controller Hook para CU20 - Visualizar Dashboard operativo y administrativo

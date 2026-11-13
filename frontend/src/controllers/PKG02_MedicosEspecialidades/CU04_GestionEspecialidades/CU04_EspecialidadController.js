@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
+import { API_ENDPOINTS } from '@/config/api';
 
-const API_BASE = 'http://localhost:8000/api/especialidades';
+const API_BASE = API_ENDPOINTS.especialidades;
 
 /**
  * Controller Hook para CU04 - Gestión de Especialidades Médicas

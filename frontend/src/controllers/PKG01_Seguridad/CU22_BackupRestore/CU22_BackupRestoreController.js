@@ -1,7 +1,8 @@
 import { useState, useCallback, useEffect } from 'react';
 import { initialConfiguracionModel } from '../../../models/PKG01_Seguridad/CU22_BackupRestore/BackupModel';
+import { API_ENDPOINTS } from '@/config/api';
 
-const API_BASE = 'http://localhost:8000/api/backups';
+const API_BASE = API_ENDPOINTS.backups;
 
 /**
  * Controller Hook para CU22 - Gestionar copias de seguridad (Backup / Restore) y Programación Automática

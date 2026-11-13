@@ -18,8 +18,9 @@ import {
 import { ESTADOS_CITA } from '../../../models/PKG05_GestionCitasConcurrencia/CU10_ReservarCita/CitaModel';
 import { ModalReprogramarCita } from './ModalReprogramarCita';
 import { ModalHistorialCita } from './ModalHistorialCita';
+import { API_ENDPOINTS } from '@/config/api';
 
-const API_BASE = 'http://localhost:8000/api/citas';
+const API_BASE = API_ENDPOINTS.citas;
 
 export const CU11_ReprogramarCitaView = () => {
   const [citas, setCitas] = useState([]);

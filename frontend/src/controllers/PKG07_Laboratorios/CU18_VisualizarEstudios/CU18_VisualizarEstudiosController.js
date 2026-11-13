@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
+import { API_ENDPOINTS } from '@/config/api';
 
-const API_BASE = 'http://localhost:8000/api/laboratorios/visor';
+const API_BASE = API_ENDPOINTS.laboratoriosVisor;
 
 /**
  * Controller Hook para CU18 - Visualizar y descargar resultados de laboratorio
