@@ -64,7 +64,8 @@ COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 
 # Dar permisos de ejecución al entrypoint y preparar directorios
 RUN chmod +x /usr/local/bin/entrypoint.sh \
-    && mkdir -p /etc/nginx/http.d /run/nginx /var/log/supervisor \
+    && rm -f /etc/nginx/http.d/default.conf \
+    && mkdir -p /etc/nginx/http.d /run/nginx /var/log/supervisor /run \
     && chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
 # Exponer el puerto de Railway
