@@ -28,15 +28,15 @@ RUN apk add --no-cache \
 # 2. Configurar e instalar extensiones esenciales de PHP
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) \
-        pdo \
-        pdo_pgsql \
-        pgsql \
-        gd \
-        zip \
-        bcmath \
-        intl \
-        opcache \
-        pcntl
+    pdo \
+    pdo_pgsql \
+    pgsql \
+    gd \
+    zip \
+    bcmath \
+    intl \
+    opcache \
+    pcntl
 
 # 3. Traer la última versión de Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
@@ -60,6 +60,7 @@ RUN composer dump-autoload --optimize --no-dev --classmap-authoritative
 COPY docker/nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY docker/php.ini $PHP_INI_DIR/conf.d/custom.ini
+COPY docker/zz-custom-fpm.conf /usr/local/etc/php-fpm.d/zz-custom-fpm.conf
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 
 # Dar permisos de ejecución al entrypoint y preparar directorios

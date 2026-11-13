@@ -33,6 +33,40 @@ use App\Controllers\PKG08_DashboardReportes\CU24_AsistenteVozIA\CU24_AsistenteVo
 */
 
 // ==========================================
+// Health & Diagnóstico Railway
+// ==========================================
+Route::get('/health-check', function () {
+    $info = [
+        'status' => 'online',
+        'php' => PHP_VERSION,
+        'app_env' => config('app.env'),
+        'app_key_present' => !empty(config('app.key')),
+        'db_connection' => config('database.default'),
+        'db_host' => config('database.connections.pgsql.host'),
+        'db_port' => config('database.connections.pgsql.port'),
+        'db_database' => config('database.connections.pgsql.database'),
+        'db_username' => config('database.connections.pgsql.username'),
+    ];
+
+    try {
+        \Illuminate\Support\Facades\DB::connection()->getPdo();
+        $info['db_status'] = 'CONNECTED';
+        $info['db_usuarios_count'] = \Illuminate\Support\Facades\DB::table('usuarios')->count();
+    } catch (\Throwable $e) {
+        $info['db_status'] = 'FAILED: ' . $e->getMessage();
+    }
+
+    try {
+        \Illuminate\Support\Facades\Cache::put('health_test', 1, 10);
+        $info['cache_status'] = \Illuminate\Support\Facades\Cache::get('health_test') == 1 ? 'OK' : 'MISMATCH';
+    } catch (\Throwable $e) {
+        $info['cache_status'] = 'FAILED: ' . $e->getMessage();
+    }
+
+    return response()->json($info);
+});
+
+// ==========================================
 // CU01: Autenticación y Recuperación
 // ==========================================
 Route::prefix('auth')->group(function () {

@@ -23,130 +23,163 @@ class CU01_AutenticacionController extends Controller
      */
     public function iniciarSesion(Request $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'login'    => 'required|string',
-            'password' => 'required|string',
-        ], [
-            'login.required'    => 'El correo electrónico o nombre de usuario es obligatorio.',
-            'password.required' => 'La contraseña es obligatoria.',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors'  => $validator->errors(),
-            ], 422);
-        }
-
-        $login = strtolower(trim($request->input('login')));
-        $password = $request->input('password');
-
-        // Claves para el control de reintento y bloqueo de 2 minutos (120 segundos)
-        $clientIp = $request->ip() ?? '127.0.0.1';
-        $lockoutKey = 'login_lockout_' . md5($login . '_' . $clientIp);
-        $attemptsKey = 'login_attempts_' . md5($login . '_' . $clientIp);
-
-        // 1. Verificar si ya se encuentra en bloqueo de 2 minutos
-        if (Cache::has($lockoutKey)) {
-            $lockUntil = Carbon::parse(Cache::get($lockoutKey));
-            $remainingSeconds = (int) max(1, Carbon::now()->diffInSeconds($lockUntil, false));
-
-            if ($remainingSeconds > 0) {
-                return response()->json([
-                    'success'          => false,
-                    'message'          => "Acceso retenido por seguridad debido a intentos fallidos. Inténtalo de nuevo en {$remainingSeconds} segundos.",
-                    'cooldown_seconds' => $remainingSeconds,
-                    'locked'           => true,
-                ], 429);
-            }
-        }
-
-        // 2. Buscar usuario por email o username
-        $user = Usuario::whereRaw('LOWER(email) = ?', [$login])
-            ->orWhereRaw('LOWER(username) = ?', [$login])
-            ->first();
-
-        // 3. Si no existe o la contraseña falla, procesar intento fallido
-        if (!$user || !password_verify($password, $user->password_hash)) {
-            $currentAttempts = (int) Cache::get($attemptsKey, 0) + 1;
-            Cache::put($attemptsKey, $currentAttempts, Carbon::now()->addMinutes(5));
-
-            $maxAllowed = 3; // Bloqueo al tercer intento fallido
-
-            if ($currentAttempts >= $maxAllowed) {
-                $cooldownTime = 120; // 2 minutos (120 segundos)
-                $lockExpiry = Carbon::now()->addSeconds($cooldownTime);
-                Cache::put($lockoutKey, $lockExpiry->toDateTimeString(), $cooldownTime);
-                Cache::forget($attemptsKey);
-
-                return response()->json([
-                    'success'          => false,
-                    'message'          => "Contraseña incorrecta. Has alcanzado los {$maxAllowed} intentos permitidos. Tu acceso ha sido bloqueado por 2 minutos.",
-                    'cooldown_seconds' => $cooldownTime,
-                    'locked'           => true,
-                    'attempts_left'    => 0,
-                ], 429);
-            }
-
-            $attemptsLeft = $maxAllowed - $currentAttempts;
-            return response()->json([
-                'success'       => false,
-                'message'       => "Contraseña incorrecta. Te quedan {$attemptsLeft} intento(s) antes del bloqueo de seguridad de 2 minutos.",
-                'attempts_left' => $attemptsLeft,
-                'locked'        => false,
-            ], 401);
-        }
-
-        // 4. Validar estado de la cuenta
-        if ($user->estado !== 'ACTIVO') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Su cuenta se encuentra inactiva o bloqueada por la administración.',
-            ], 403);
-        }
-
-        // 5. Éxito: Limpiar intentos fallidos y registrar último acceso
-        Cache::forget($attemptsKey);
-        Cache::forget($lockoutKey);
-
-        $user->ultimo_login = Carbon::now();
-        $user->save();
-
-        // Obtener nombre del Rol
-        $rolNombre = DB::table('roles')->where('id_rol', $user->id_rol)->value('nombre_rol') ?? 'USUARIO';
-
-        // Generar token Sanctum
-        $token = $user->createToken('auth_token_' . $user->username)->plainTextToken;
-
-        // Registrar en Bitácora de Auditoría (CU02)
         try {
-            BitacoraAuditoria::registrar(
-                'PKG01_Seguridad',
-                'usuarios',
-                $user->id_usuario,
-                'LOGIN',
-                null,
-                ['rol' => $rolNombre, 'login_timestamp' => Carbon::now('America/La_Paz')->toDateTimeString()],
-                $user->id_usuario,
-                $clientIp,
-                $request->userAgent()
-            );
-        } catch (\Throwable $e) {
-            Log::warning('No se pudo registrar bitacora de login: ' . $e->getMessage());
-        }
+            $validator = Validator::make($request->all(), [
+                'login'    => 'required|string',
+                'password' => 'required|string',
+            ], [
+                'login.required'    => 'El correo electrónico o nombre de usuario es obligatorio.',
+                'password.required' => 'La contraseña es obligatoria.',
+            ]);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Inicio de sesión exitoso. Bienvenido a la Clínica Vida Salud.',
-            'token'   => $token,
-            'user'    => [
-                'id_usuario'   => $user->id_usuario,
-                'username'     => $user->username,
-                'email'        => $user->email,
-                'rol'          => $rolNombre,
-                'ultimo_login' => $user->ultimo_login,
-            ],
-        ]);
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'errors'  => $validator->errors(),
+                ], 422);
+            }
+
+            $login = strtolower(trim($request->input('login')));
+            $password = $request->input('password');
+
+            // Claves para el control de reintento y bloqueo de 2 minutos (120 segundos)
+            $clientIp = $request->ip() ?? '127.0.0.1';
+            $lockoutKey = 'login_lockout_' . md5($login . '_' . $clientIp);
+            $attemptsKey = 'login_attempts_' . md5($login . '_' . $clientIp);
+
+            // 1. Verificar si ya se encuentra en bloqueo de 2 minutos
+            try {
+                if (Cache::has($lockoutKey)) {
+                    $lockUntil = Carbon::parse(Cache::get($lockoutKey));
+                    $remainingSeconds = (int) max(1, Carbon::now()->diffInSeconds($lockUntil, false));
+
+                    if ($remainingSeconds > 0) {
+                        return response()->json([
+                            'success'          => false,
+                            'message'          => "Acceso retenido por seguridad debido a intentos fallidos. Inténtalo de nuevo en {$remainingSeconds} segundos.",
+                            'cooldown_seconds' => $remainingSeconds,
+                            'locked'           => true,
+                        ], 429);
+                    }
+                }
+            } catch (\Throwable $ce) {
+                Log::warning('Cache check failed: ' . $ce->getMessage());
+            }
+
+            // 2. Buscar usuario por email o username
+            $user = Usuario::whereRaw('LOWER(email) = ?', [$login])
+                ->orWhereRaw('LOWER(username) = ?', [$login])
+                ->first();
+
+            // 3. Si no existe o la contraseña falla, procesar intento fallido
+            if (!$user || !password_verify($password, $user->password_hash)) {
+                $currentAttempts = 1;
+                try {
+                    $currentAttempts = (int) Cache::get($attemptsKey, 0) + 1;
+                    Cache::put($attemptsKey, $currentAttempts, Carbon::now()->addMinutes(5));
+                } catch (\Throwable $ce) {
+                    Log::warning('Cache write failed: ' . $ce->getMessage());
+                }
+
+                $maxAllowed = 3; // Bloqueo al tercer intento fallido
+
+                if ($currentAttempts >= $maxAllowed) {
+                    $cooldownTime = 120; // 2 minutos (120 segundos)
+                    try {
+                        $lockExpiry = Carbon::now()->addSeconds($cooldownTime);
+                        Cache::put($lockoutKey, $lockExpiry->toDateTimeString(), $cooldownTime);
+                        Cache::forget($attemptsKey);
+                    } catch (\Throwable $ce) {
+                        Log::warning('Cache lockout write failed: ' . $ce->getMessage());
+                    }
+
+                    return response()->json([
+                        'success'          => false,
+                        'message'          => "Contraseña incorrecta. Has alcanzado los {$maxAllowed} intentos permitidos. Tu acceso ha sido bloqueado por 2 minutos.",
+                        'cooldown_seconds' => $cooldownTime,
+                        'locked'           => true,
+                        'attempts_left'    => 0,
+                    ], 429);
+                }
+
+                $attemptsLeft = $maxAllowed - $currentAttempts;
+                return response()->json([
+                    'success'       => false,
+                    'message'       => "Contraseña incorrecta. Te quedan {$attemptsLeft} intento(s) antes del bloqueo de seguridad de 2 minutos.",
+                    'attempts_left' => $attemptsLeft,
+                    'locked'        => false,
+                ], 401);
+            }
+
+            // 4. Validar estado de la cuenta
+            if ($user->estado !== 'ACTIVO') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Su cuenta se encuentra inactiva o bloqueada por la administración.',
+                ], 403);
+            }
+
+            // 5. Éxito: Limpiar intentos fallidos y registrar último acceso
+            try {
+                Cache::forget($attemptsKey);
+                Cache::forget($lockoutKey);
+            } catch (\Throwable $ce) {
+                // Ignore cache clear error
+            }
+
+            $user->ultimo_login = Carbon::now();
+            $user->save();
+
+            // Obtener nombre del Rol
+            $rolNombre = DB::table('roles')->where('id_rol', $user->id_rol)->value('nombre_rol') ?? 'USUARIO';
+
+            // Generar token Sanctum
+            $token = $user->createToken('auth_token_' . $user->username)->plainTextToken;
+
+            // Registrar en Bitácora de Auditoría (CU02)
+            try {
+                BitacoraAuditoria::registrar(
+                    'PKG01_Seguridad',
+                    'usuarios',
+                    $user->id_usuario,
+                    'LOGIN',
+                    null,
+                    ['rol' => $rolNombre, 'login_timestamp' => Carbon::now('America/La_Paz')->toDateTimeString()],
+                    $user->id_usuario,
+                    $clientIp,
+                    $request->userAgent()
+                );
+            } catch (\Throwable $e) {
+                Log::warning('No se pudo registrar bitacora de login: ' . $e->getMessage());
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Inicio de sesión exitoso. Bienvenido a la Clínica Vida Salud.',
+                'token'   => $token,
+                'user'    => [
+                    'id_usuario'   => $user->id_usuario,
+                    'username'     => $user->username,
+                    'email'        => $user->email,
+                    'rol'          => $rolNombre,
+                    'ultimo_login' => $user->ultimo_login,
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Excepción crítica en iniciarSesion: ' . $e->getMessage(), [
+                'file'  => $e->getFile(),
+                'line'  => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al iniciar sesión: ' . $e->getMessage(),
+                'error'   => [
+                    'file' => basename($e->getFile()) . ':' . $e->getLine(),
+                ],
+            ], 500);
+        }
     }
 
     /**

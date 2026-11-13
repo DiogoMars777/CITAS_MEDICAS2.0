@@ -19,65 +19,74 @@ class CU04_EspecialidadController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Especialidad::query();
+        try {
+            $query = Especialidad::query();
 
-        // 1. Filtro por Estado (ACTIVO / INACTIVO)
-        if ($request->filled('estado')) {
-            $query->where('estado', strtoupper($request->input('estado')));
-        }
+            // 1. Filtro por Estado (ACTIVO / INACTIVO)
+            if ($request->filled('estado')) {
+                $query->where('estado', strtoupper($request->input('estado')));
+            }
 
-        // 2. Filtro por Búsqueda (nombre o descripción)
-        if ($request->filled('search')) {
-            $search = strtolower(trim($request->input('search')));
-            $query->where(function ($q) use ($search) {
-                $q->whereRaw('LOWER(nombre) LIKE ?', ["%{$search}%"])
-                  ->orWhereRaw('LOWER(descripcion) LIKE ?', ["%{$search}%"]);
+            // 2. Filtro por Búsqueda (nombre o descripción)
+            if ($request->filled('search')) {
+                $search = strtolower(trim($request->input('search')));
+                $query->where(function ($q) use ($search) {
+                    $q->whereRaw('LOWER(nombre) LIKE ?', ["%{$search}%"])
+                      ->orWhereRaw('LOWER(descripcion) LIKE ?', ["%{$search}%"]);
+                });
+            }
+
+            // 3. Ordenamiento
+            $query->orderBy('nombre', 'asc');
+
+            // 4. Paginación
+            $perPage = (int) $request->input('per_page', 10);
+            $especialidades = $query->paginate($perPage);
+
+            // Enriquecer cada especialidad con conteo real de médicos y citas
+            $especialidades->getCollection()->transform(function ($esp) {
+                $totalMedicos = DB::table('medico_especialidades')
+                    ->where('id_especialidad', $esp->id_especialidad)
+                    ->count();
+
+                $totalCitas = DB::table('citas')
+                    ->where('id_especialidad', $esp->id_especialidad)
+                    ->count();
+
+                return [
+                    'id_especialidad' => $esp->id_especialidad,
+                    'nombre'          => $esp->nombre,
+                    'descripcion'     => $esp->descripcion,
+                    'estado'          => $esp->estado,
+                    'total_medicos'   => $totalMedicos,
+                    'total_citas'     => $totalCitas,
+                ];
             });
-        }
 
-        // 3. Ordenamiento
-        $query->orderBy('nombre', 'asc');
-
-        // 4. Paginación
-        $perPage = (int) $request->input('per_page', 10);
-        $especialidades = $query->paginate($perPage);
-
-        // Enriquecer cada especialidad con conteo real de médicos y citas
-        $especialidades->getCollection()->transform(function ($esp) {
-            $totalMedicos = DB::table('medico_especialidades')
-                ->where('id_especialidad', $esp->id_especialidad)
-                ->count();
-
-            $totalCitas = DB::table('citas')
-                ->where('id_especialidad', $esp->id_especialidad)
-                ->count();
-
-            return [
-                'id_especialidad' => $esp->id_especialidad,
-                'nombre'          => $esp->nombre,
-                'descripcion'     => $esp->descripcion,
-                'estado'          => $esp->estado,
-                'total_medicos'   => $totalMedicos,
-                'total_citas'     => $totalCitas,
+            // Métricas resumidas
+            $stats = [
+                'total'              => Especialidad::count(),
+                'activas'            => Especialidad::where('estado', 'ACTIVO')->count(),
+                'inactivas'          => Especialidad::where('estado', 'INACTIVO')->count(),
+                'medicos_vinculados' => DB::table('medico_especialidades')->distinct('id_medico')->count('id_medico'),
             ];
-        });
 
-        // Métricas resumidas
-        $stats = [
-            'total'              => Especialidad::count(),
-            'activas'            => Especialidad::where('estado', 'ACTIVO')->count(),
-            'inactivas'          => Especialidad::where('estado', 'INACTIVO')->count(),
-            'medicos_vinculados' => DB::table('medico_especialidades')->distinct('id_medico')->count('id_medico'),
-        ];
-
-        return response()->json([
-            'status'                => 'success',
-            'case_of_use'           => 'CU04_GestionEspecialidades',
-            'timezone'              => 'America/La_Paz (UTC-4)',
-            'hora_servidor_bolivia' => Carbon::now('America/La_Paz')->format('d/m/Y H:i:s') . ' [BOT]',
-            'stats'                 => $stats,
-            'data'                  => $especialidades,
-        ]);
+            return response()->json([
+                'status'                => 'success',
+                'case_of_use'           => 'CU04_GestionEspecialidades',
+                'timezone'              => 'America/La_Paz (UTC-4)',
+                'hora_servidor_bolivia' => Carbon::now('America/La_Paz')->format('d/m/Y H:i:s') . ' [BOT]',
+                'stats'                 => $stats,
+                'data'                  => $especialidades,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Error en listar especialidades: ' . $e->getMessage());
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Error al obtener especialidades: ' . $e->getMessage(),
+                'file'    => basename($e->getFile()) . ':' . $e->getLine()
+            ], 500);
+        }
     }
 
     /**
