@@ -14,8 +14,14 @@ import {
   LogOut,
   Clock,
   HeartPulse,
+  AlertOctagon,
 } from 'lucide-react';
-import { PACKAGES_CONFIG, SISTEMA_INFO } from '../../models/navigation/navigationConfig';
+import {
+  PACKAGES_CONFIG,
+  SISTEMA_INFO,
+  normalizeRole,
+  ROLE_PERMISSIONS,
+} from '../../models/navigation/navigationConfig';
 import { useHoraBoliviana } from '../../controllers/PKG01_Seguridad/CU02_BitacoraAuditoria/CU02_BitacoraAuditoriaController';
 import CU02_BitacoraView from '../PKG01_Seguridad/CU02_BitacoraAuditoria/CU02_BitacoraView';
 import CU01_SessionView from '../PKG01_Seguridad/CU01_Autenticacion/CU01_SessionView';
@@ -56,8 +62,12 @@ const PACKAGE_ICONS = {
 };
 
 export const MainLayout = ({ currentUser, onLogout }) => {
-  // Caso de uso activo por defecto: CU03 (o CU02)
-  const [activeCUId, setActiveCUId] = useState('CU03');
+  // Determinar permisos y configuración según el Rol del usuario autenticado (RBAC)
+  const roleKey = useMemo(() => normalizeRole(currentUser?.rol), [currentUser?.rol]);
+  const roleConfig = useMemo(() => ROLE_PERMISSIONS[roleKey] || ROLE_PERMISSIONS.ADMINISTRADOR, [roleKey]);
+
+  // Caso de uso activo por defecto: inicializa en la vista principal según el rol
+  const [activeCUId, setActiveCUId] = useState(() => roleConfig.defaultCU);
   const [selectedCitaForCU16, setSelectedCitaForCU16] = useState(2);
 
   // Control de apertura en móvil
@@ -66,12 +76,21 @@ export const MainLayout = ({ currentUser, onLogout }) => {
   // Paquetes expandidos en el acordeón
   const [expandedPackages, setExpandedPackages] = useState({
     PKG01: true,
+    PKG02: true,
+    PKG03: true,
     PKG04: true,
     PKG05: true,
     PKG06: true,
     PKG07: true,
     PKG08: true,
   });
+
+  // Si cambia el usuario o el rol no tiene permitido el CU actual, redirigir a su vista autorizada
+  React.useEffect(() => {
+    if (!roleConfig.allowedCUs.includes(activeCUId)) {
+      setActiveCUId(roleConfig.defaultCU);
+    }
+  }, [roleConfig, activeCUId]);
 
   // Reloj hora boliviana discreto
   const horaBolivia = useHoraBoliviana();
@@ -84,7 +103,19 @@ export const MainLayout = ({ currentUser, onLogout }) => {
     }));
   };
 
-  const filteredPackages = PACKAGES_CONFIG;
+  // Filtrar paquetes y casos de uso estrictamente autorizados para el rol
+  const filteredPackages = useMemo(() => {
+    return PACKAGES_CONFIG.map((pkg) => {
+      const allowedCasos = pkg.casosDeUso.filter((cu) =>
+        roleConfig.allowedCUs.includes(cu.id)
+      );
+      if (allowedCasos.length === 0) return null;
+      return {
+        ...pkg,
+        casosDeUso: allowedCasos,
+      };
+    }).filter(Boolean);
+  }, [roleConfig]);
 
   // Obtener metadata del CU y Paquete activos
   const activeCUInfo = useMemo(() => {
@@ -206,7 +237,7 @@ export const MainLayout = ({ currentUser, onLogout }) => {
               {SISTEMA_INFO.nombre}
             </h1>
             <span style={{ fontSize: '0.72rem', color: '#e0f2fe', fontWeight: 600 }}>
-              Panel Administrativo
+              {roleConfig.portalTitle}
             </span>
           </div>
         </div>
@@ -477,13 +508,15 @@ export const MainLayout = ({ currentUser, onLogout }) => {
               <span className="hide-on-mobile" style={{ fontWeight: 600, color: '#0f172a' }}>{currentUser?.username || 'Admin'}</span>
               <span className="hide-on-mobile" style={{
                 fontSize: '0.68rem',
-                padding: '1px 6px',
-                borderRadius: '4px',
-                background: '#e0f2fe',
-                color: '#0284c7',
+                padding: '2px 8px',
+                borderRadius: '6px',
+                background: roleConfig.badgeBg,
+                color: roleConfig.badgeColor,
+                border: `1px solid ${roleConfig.badgeBorder}`,
                 fontWeight: 800,
+                letterSpacing: '0.02em',
               }}>
-                {currentUser?.rol || 'ADMINISTRADOR'}
+                {currentUser?.rol || roleConfig.nombre}
               </span>
             </div>
 
@@ -525,7 +558,56 @@ export const MainLayout = ({ currentUser, onLogout }) => {
 
         {/* ÁREA DE CONTENIDO — CANVAS EJECUTIVO CLARO */}
         <main style={{ flex: 1, overflowY: 'auto', background: '#f8fafc', padding: '1.5rem' }}>
-          {activeCUId === 'CU24' && <CU24_AsistenteVozView currentUser={currentUser} />}
+          {!roleConfig.allowedCUs.includes(activeCUId) ? (
+            <div style={{
+              background: '#ffffff',
+              borderRadius: '16px',
+              border: '1px solid #fed7aa',
+              padding: '3rem 2rem',
+              textAlign: 'center',
+              maxWidth: '560px',
+              margin: '3rem auto',
+              boxShadow: '0 10px 25px -5px rgba(234, 88, 12, 0.1)',
+            }}>
+              <div style={{
+                width: '64px',
+                height: '64px',
+                borderRadius: '50%',
+                background: '#fff7ed',
+                color: '#ea580c',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 1.5rem',
+              }}>
+                <AlertOctagon size={32} />
+              </div>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.5rem' }}>
+                Módulo Restringido
+              </h2>
+              <p style={{ fontSize: '0.875rem', color: '#64748b', lineHeight: 1.6, marginBottom: '1.5rem' }}>
+                Tu cuenta de <strong>{roleConfig.nombre}</strong> no cuenta con privilegios para acceder a <strong>{activeCUInfo.cu?.numero || activeCUId}</strong>.
+              </p>
+              <button
+                type="button"
+                onClick={() => handleSelectCU(roleConfig.defaultCU, filteredPackages[0]?.id || 'PKG05')}
+                style={{
+                  padding: '0.6rem 1.25rem',
+                  background: '#0284c7',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontWeight: 600,
+                  fontSize: '0.85rem',
+                  cursor: 'pointer',
+                }}
+              >
+                Ir a mi módulo principal
+              </button>
+            </div>
+          ) : (
+            <>
+              {activeCUId === 'CU24' && <CU24_AsistenteVozView currentUser={currentUser} />}
 
           {activeCUId === 'CU21' && <CU21_ReportesView />}
 
@@ -619,6 +701,8 @@ export const MainLayout = ({ currentUser, onLogout }) => {
               pkg={activeCUInfo.pkg}
               onNavigateToCU02={() => handleSelectCU('CU02', 'PKG01')}
             />
+          )}
+            </>
           )}
         </main>
       </div>

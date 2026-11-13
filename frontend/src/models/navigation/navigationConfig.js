@@ -360,3 +360,106 @@ export const PACKAGES_CONFIG = [
     ],
   },
 ];
+
+/**
+ * Normaliza el nombre del rol proveniente de la base de datos o API.
+ */
+export const normalizeRole = (role) => {
+  const r = (role || '').toUpperCase().trim();
+  if (r.includes('ADMIN')) return 'ADMINISTRADOR';
+  if (r.includes('MEDIC') || r.includes('DOCTOR')) return 'MEDICO';
+  if (r.includes('RECEP')) return 'RECEPCIONISTA';
+  if (r.includes('PACIENT') || r.includes('CLIENT')) return 'PACIENTE';
+  return 'ADMINISTRADOR';
+};
+
+/**
+ * Matriz de Permisos y Vistas por Rol (Role-Based Access Control)
+ */
+export const ROLE_PERMISSIONS = {
+  ADMINISTRADOR: {
+    nombre: 'Administrador General',
+    portalTitle: 'Panel de Administración Global',
+    defaultCU: 'CU20', // Dashboard Ejecutivo
+    allowedCUs: [
+      'CU01', 'CU02', 'CU03', 'CU04', 'CU05', 'CU06', 'CU07', 'CU08',
+      'CU09', 'CU10', 'CU11', 'CU12', 'CU13', 'CU14', 'CU15', 'CU16',
+      'CU17', 'CU18', 'CU19', 'CU20', 'CU21', 'CU22', 'CU23', 'CU24'
+    ],
+    badgeColor: '#4338ca',
+    badgeBg: '#eef2ff',
+    badgeBorder: '#c7d2fe',
+    descripcion: 'Control integral de la clínica, usuarios, auditoría y configuraciones.',
+  },
+  MEDICO: {
+    nombre: 'Personal Médico',
+    portalTitle: 'Portal Médico y Atención Clínica',
+    defaultCU: 'CU15', // Agenda Médica Diaria
+    allowedCUs: [
+      'CU15', // Agenda Médica Diaria (Principal)
+      'CU16', // Atender Consulta y Evolución
+      'CU07', // Configurar Turnos Propios
+      'CU08', // Bloqueos de Agenda
+      'CU09', // Consultar Disponibilidad
+      'CU06', // Directorio de Pacientes
+      'CU14', // Antecedentes Clínicos Base
+      'CU18', // Visualizar Resultados de Laboratorio
+      'CU20', // Dashboard Operativo Médico
+      'CU24', // Asistente IA Médico
+      'CU01', // Sesión
+    ],
+    badgeColor: '#059669',
+    badgeBg: '#ecfdf5',
+    badgeBorder: '#a7f3d0',
+    descripcion: 'Atención de pacientes, evolución clínica, recetas y agenda del día.',
+  },
+  RECEPCIONISTA: {
+    nombre: 'Recepción y Atención al Paciente',
+    portalTitle: 'Módulo de Recepción y Citas',
+    defaultCU: 'CU10', // Reservar Citas
+    allowedCUs: [
+      'CU10', // Reservar Citas (Principal)
+      'CU11', // Reprogramar Cita
+      'CU12', // Cancelar Cita
+      'CU13', // Control de Asistencia (Sala de Espera)
+      'CU23', // Gestión de Pagos / Cobranza
+      'CU06', // Registro de Paciente (Apertura Ficha)
+      'CU14', // Antecedentes Clínicos Base
+      'CU09', // Consultar Disponibilidad
+      'CU04', // Especialidades Médicas
+      'CU05', // Directorio de Médicos
+      'CU17', // Carga de Resultados de Laboratorio
+      'CU18', // Visualizar Resultados
+      'CU19', // Recordatorios y Notificaciones
+      'CU21', // Reportes Estadísticos de Citas
+      'CU24', // Asistente IA Reserva Rápida
+      'CU01', // Sesión
+    ],
+    badgeColor: '#0284c7',
+    badgeBg: '#e0f2fe',
+    badgeBorder: '#bae6fd',
+    descripcion: 'Agendamiento, recepción en sala de espera, cobros y alta de pacientes.',
+  },
+  PACIENTE: {
+    nombre: 'Portal del Paciente',
+    portalTitle: 'Portal del Paciente - Salud Digital',
+    defaultCU: 'CU10', // Reservar Cita
+    allowedCUs: [
+      'CU10', // Reservar Cita (Ticket Digital)
+      'CU11', // Reprogramar mi Cita
+      'CU12', // Cancelar mi Cita
+      'CU09', // Consultar Horarios Disponibles
+      'CU23', // Mis Pagos y Comprobantes
+      'CU06', // Mi Ficha de Paciente
+      'CU14', // Mis Antecedentes y Alergias
+      'CU18', // Mis Resultados de Laboratorio
+      'CU24', // Asistente IA para Reserva por Voz
+      'CU01', // Sesión
+    ],
+    badgeColor: '#d97706',
+    badgeBg: '#fef3c7',
+    badgeBorder: '#fde68a',
+    descripcion: 'Reserva ágil de citas, consulta de horarios, pagos y descarga de análisis.',
+  },
+};
+
