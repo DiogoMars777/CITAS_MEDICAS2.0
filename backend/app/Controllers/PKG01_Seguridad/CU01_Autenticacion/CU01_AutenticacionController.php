@@ -14,6 +14,8 @@ use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon;
 use App\Models\PKG01_Seguridad\CU01_Autenticacion\Usuario;
 use App\Models\PKG01_Seguridad\CU02_BitacoraAuditoria\BitacoraAuditoria;
+use App\Models\PKG03_PacientesHistorial\CU06_RegistroPaciente\Paciente;
+use App\Models\PKG02_MedicosEspecialidades\CU05_GestionMedicos\Medico;
 use App\Mail\PasswordResetOtpMail;
 
 class CU01_AutenticacionController extends Controller
@@ -153,16 +155,22 @@ class CU01_AutenticacionController extends Controller
                 Log::warning('No se pudo registrar bitacora de login: ' . $e->getMessage());
             }
 
+            $paciente = Paciente::where('id_usuario', $user->id_usuario)->first();
+            $medico = Medico::where('id_usuario', $user->id_usuario)->first();
+
             return response()->json([
                 'success' => true,
                 'message' => 'Inicio de sesión exitoso. Bienvenido a la Clínica Vida Salud.',
                 'token'   => $token,
                 'user'    => [
-                    'id_usuario'   => $user->id_usuario,
-                    'username'     => $user->username,
-                    'email'        => $user->email,
-                    'rol'          => $rolNombre,
-                    'ultimo_login' => $user->ultimo_login,
+                    'id_usuario'      => $user->id_usuario,
+                    'username'        => $user->username,
+                    'email'           => $user->email,
+                    'rol'             => $rolNombre,
+                    'id_paciente'     => $paciente?->id_paciente,
+                    'id_medico'       => $medico?->id_medico,
+                    'nombre_completo' => $paciente ? $paciente->nombre_completo : ($medico ? "Dr(a). {$medico->nombre_completo}" : $user->username),
+                    'ultimo_login'    => $user->ultimo_login,
                 ],
             ]);
         } catch (\Throwable $e) {
@@ -437,15 +445,20 @@ class CU01_AutenticacionController extends Controller
         }
 
         $rolNombre = DB::table('roles')->where('id_rol', $user->id_rol)->value('nombre_rol') ?? 'USUARIO';
+        $paciente = Paciente::where('id_usuario', $user->id_usuario)->first();
+        $medico = Medico::where('id_usuario', $user->id_usuario)->first();
 
         return response()->json([
             'success' => true,
             'user'    => [
-                'id_usuario'   => $user->id_usuario,
-                'username'     => $user->username,
-                'email'        => $user->email,
-                'rol'          => $rolNombre,
-                'ultimo_login' => $user->ultimo_login,
+                'id_usuario'      => $user->id_usuario,
+                'username'        => $user->username,
+                'email'           => $user->email,
+                'rol'             => $rolNombre,
+                'id_paciente'     => $paciente?->id_paciente,
+                'id_medico'       => $medico?->id_medico,
+                'nombre_completo' => $paciente ? $paciente->nombre_completo : ($medico ? "Dr(a). {$medico->nombre_completo}" : $user->username),
+                'ultimo_login'    => $user->ultimo_login,
             ]
         ]);
     }

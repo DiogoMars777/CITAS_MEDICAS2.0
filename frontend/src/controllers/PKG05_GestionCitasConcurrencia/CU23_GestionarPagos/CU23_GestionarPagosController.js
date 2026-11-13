@@ -40,19 +40,25 @@ export function useGestionarPagos(currentUser) {
     setLoading(true);
     setError(null);
     try {
+      const isPac = ['PACIENTE', 'CLIENTE'].includes(currentUser?.rol?.toUpperCase?.());
+      const idPaciente = isPac ? currentUser?.id_paciente : undefined;
+      const token = currentUser?.token;
+
       const [resumen, pendientes, pagos] = await Promise.all([
-        CU23_GestionarPagosModel.obtenerResumenCaja(),
+        !isPac ? CU23_GestionarPagosModel.obtenerResumenCaja(null, token) : Promise.resolve(null),
         CU23_GestionarPagosModel.obtenerPendientes({
           buscar: filtroBuscar,
           fecha: filtroFecha,
-        }),
+          id_paciente: idPaciente,
+        }, token),
         CU23_GestionarPagosModel.listarPagos({
           buscar: filtroBuscar,
           metodo_pago: filtroMetodo,
           estado_pago: filtroEstado,
           fecha_desde: filtroFecha,
           page: meta.current_page,
-        }),
+          id_paciente: idPaciente,
+        }, token),
       ]);
 
       if (resumen) setResumenCaja(resumen);
@@ -67,7 +73,7 @@ export function useGestionarPagos(currentUser) {
     } finally {
       setLoading(false);
     }
-  }, [filtroBuscar, filtroMetodo, filtroEstado, filtroFecha, meta.current_page]);
+  }, [filtroBuscar, filtroMetodo, filtroEstado, filtroFecha, meta.current_page, currentUser?.id_paciente, currentUser?.rol, currentUser?.token]);
 
   useEffect(() => {
     cargarDatos();

@@ -23,6 +23,7 @@ export const ModalReservarCita = ({
   especialidadesMeta = [],
   medicosMeta = [],
   loading = false,
+  currentUser = null,
 }) => {
   const [formData, setFormData] = useState(getInitialReservaFormState());
   const [localError, setLocalError] = useState(null);
@@ -35,12 +36,16 @@ export const ModalReservarCita = ({
   // Reset del formulario al abrir
   useEffect(() => {
     if (isOpen) {
-      setFormData(getInitialReservaFormState());
+      const initial = getInitialReservaFormState();
+      if (currentUser?.id_paciente) {
+        initial.id_paciente = String(currentUser.id_paciente);
+      }
+      setFormData(initial);
       setLocalError(null);
       setAvailableSlots([]);
       setProximosDias([]);
     }
-  }, [isOpen]);
+  }, [isOpen, currentUser]);
 
   // Filtrar médicos según especialidad seleccionada
   const filteredMedicos = formData.id_especialidad
@@ -256,28 +261,46 @@ export const ModalReservarCita = ({
                 <label style={{ display: 'block', fontSize: '0.78rem', color: '#475569', fontWeight: 600, marginBottom: '4px' }}>
                   Paciente Afiliado *
                 </label>
-                <select
-                  value={formData.id_paciente}
-                  onChange={(e) => setFormData({ ...formData, id_paciente: e.target.value })}
-                  required
-                  style={{
-                    width: '100%',
-                    padding: '0.55rem 0.75rem',
-                    fontSize: '0.84rem',
+                {currentUser?.id_paciente ? (
+                  <div style={{
+                    padding: '0.6rem 0.85rem',
                     borderRadius: '8px',
-                    border: '1px solid #cbd5e1',
-                    background: '#ffffff',
-                    color: '#0f172a',
-                    outline: 'none',
-                  }}
-                >
-                  <option value="">Seleccione un paciente por nombre o CI...</option>
-                  {pacientesMeta.map((p) => (
-                    <option key={p.id_paciente} value={p.id_paciente}>
-                      {p.nombre_completo} — CI: {p.ci} (Exp: {p.numero_expediente})
-                    </option>
-                  ))}
-                </select>
+                    background: '#f0fdf4',
+                    border: '1px solid #bbf7d0',
+                    color: '#166534',
+                    fontSize: '0.86rem',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                  }}>
+                    <User size={16} color="#16a34a" />
+                    <span>{currentUser.nombre_completo || currentUser.username} (Titular de la cuenta)</span>
+                  </div>
+                ) : (
+                  <select
+                    value={formData.id_paciente}
+                    onChange={(e) => setFormData({ ...formData, id_paciente: e.target.value })}
+                    required
+                    style={{
+                      width: '100%',
+                      padding: '0.55rem 0.75rem',
+                      fontSize: '0.84rem',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      background: '#ffffff',
+                      color: '#0f172a',
+                      outline: 'none',
+                    }}
+                  >
+                    <option value="">Seleccione un paciente por nombre o CI...</option>
+                    {pacientesMeta.map((p) => (
+                      <option key={p.id_paciente} value={p.id_paciente}>
+                        {p.nombre_completo} — CI: {p.ci} (Exp: {p.numero_expediente})
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               {/* ESPECIALIDAD */}

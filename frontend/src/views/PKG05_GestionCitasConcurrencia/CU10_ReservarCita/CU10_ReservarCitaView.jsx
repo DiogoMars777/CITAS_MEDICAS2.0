@@ -27,7 +27,7 @@ import ModalGestionPago from '../CU23_GestionarPagos/ModalGestionPago';
 import ModalComprobantePago from '../CU23_GestionarPagos/ModalComprobantePago';
 import CU23_GestionarPagosModel from '../../../models/PKG05_GestionCitasConcurrencia/CU23_GestionarPagos/CU23_GestionarPagosModel';
 
-export const CU10_ReservarCitaView = () => {
+export const CU10_ReservarCitaView = ({ currentUser = null }) => {
   const {
     citas,
     pagination,
@@ -62,7 +62,7 @@ export const CU10_ReservarCitaView = () => {
     reservarCita,
     verFichaCita,
     cambiarEstadoCita,
-  } = useCU10ReservaCitaController();
+  } = useCU10ReservaCitaController(currentUser);
 
   const [modalPagoOpen, setModalPagoOpen] = React.useState(false);
   const [citaParaPago, setCitaParaPago] = React.useState(null);
@@ -698,6 +698,7 @@ export const CU10_ReservarCitaView = () => {
         especialidadesMeta={especialidadesMeta}
         medicosMeta={medicosMeta}
         loading={actionLoading}
+        currentUser={currentUser}
       />
 
       {/* MODAL FICHA DE ATENCIÓN IMPRIMIBLE */}

@@ -18,7 +18,7 @@ import { API_ENDPOINTS } from '@/config/api';
 
 const API_BASE = API_ENDPOINTS.citas;
 
-export const CU12_CancelarCitaView = () => {
+export const CU12_CancelarCitaView = ({ currentUser = null }) => {
   const [citas, setCitas] = useState([]);
   const [pagination, setPagination] = useState({ currentPage: 1, lastPage: 1, perPage: 15, total: 0 });
   const [kpis, setKpis] = useState({
@@ -70,8 +70,12 @@ export const CU12_CancelarCitaView = () => {
       if (searchTerm.trim()) params.append('search', searchTerm.trim());
       if (filterMedico) params.append('id_medico', filterMedico);
       if (filterFecha) params.append('fecha', filterFecha);
+      if (currentUser?.id_paciente) params.append('id_paciente', String(currentUser.id_paciente));
 
-      const res = await fetch(`${API_BASE}?${params.toString()}`);
+      const headers = { Accept: 'application/json' };
+      if (currentUser?.token) headers['Authorization'] = `Bearer ${currentUser.token}`;
+
+      const res = await fetch(`${API_BASE}?${params.toString()}`, { headers });
       const data = await res.json();
 
       if (data.success) {
@@ -89,7 +93,7 @@ export const CU12_CancelarCitaView = () => {
     } finally {
       setLoading(false);
     }
-  }, [searchTerm, filterMedico, filterFecha]);
+  }, [searchTerm, filterMedico, filterFecha, currentUser?.id_paciente, currentUser?.token]);
 
   const fetchMeta = useCallback(async () => {
     try {

@@ -27,3 +27,4 @@ class CancelarCitasImpagasCommand extends Command
         $this->info("Proceso completado: {$total} cita(s) impaga(s) cancelada(s) y cupos liberados.");
     }
 }
+

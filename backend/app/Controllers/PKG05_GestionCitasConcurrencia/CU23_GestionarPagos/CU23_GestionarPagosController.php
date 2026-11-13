@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Validator;
 use App\Services\PKG05_GestionCitasConcurrencia\CU23_GestionarPagosService;
 use App\Models\PKG05_GestionCitasConcurrencia\CU23_GestionarPagos\Pago;
 use App\Models\PKG05_GestionCitasConcurrencia\CU10_ReservarCita\Cita;
+use App\Models\PKG03_PacientesHistorial\CU06_RegistroPaciente\Paciente;
 use App\Models\PKG01_Seguridad\CU02_BitacoraAuditoria\BitacoraAuditoria;
 
 /**
@@ -26,12 +27,26 @@ class CU23_GestionarPagosController extends Controller
     }
 
     /**
-     * Lista histórica de pagos con filtros
+     * Lista histórica de pagos con filtros (Recepción ve todo, Paciente solo los suyos)
      */
     public function index(Request $request): JsonResponse
     {
         try {
-            $resultado = $this->service->listarPagos($request->all());
+            $user = $request->user();
+            $filtros = $request->all();
+
+            // Regla de Visibilidad: Paciente solo puede ver sus propios pagos
+            if ($user) {
+                $rol = strtoupper($user->rol?->nombre_rol ?? '');
+                if (in_array($rol, ['PACIENTE', 'CLIENTE'])) {
+                    $paciente = Paciente::where('id_usuario', $user->id_usuario)->first();
+                    $filtros['id_paciente'] = $paciente?->id_paciente;
+                }
+            } elseif ($request->filled('id_paciente')) {
+                $filtros['id_paciente'] = (int) $request->input('id_paciente');
+            }
+
+            $resultado = $this->service->listarPagos($filtros);
             return response()->json([
                 'success' => true,
                 'data'    => $resultado['data'],
@@ -51,12 +66,26 @@ class CU23_GestionarPagosController extends Controller
     }
 
     /**
-     * Lista citas pendientes de cobro
+     * Lista citas pendientes de cobro (Recepción ve todas, Paciente solo las suyas)
      */
     public function pendientes(Request $request): JsonResponse
     {
         try {
-            $pendientes = $this->service->listarCitasPendientesPago($request->all());
+            $user = $request->user();
+            $filtros = $request->all();
+
+            // Regla de Visibilidad: Paciente solo puede ver sus propias reservas pendientes
+            if ($user) {
+                $rol = strtoupper($user->rol?->nombre_rol ?? '');
+                if (in_array($rol, ['PACIENTE', 'CLIENTE'])) {
+                    $paciente = Paciente::where('id_usuario', $user->id_usuario)->first();
+                    $filtros['id_paciente'] = $paciente?->id_paciente;
+                }
+            } elseif ($request->filled('id_paciente')) {
+                $filtros['id_paciente'] = (int) $request->input('id_paciente');
+            }
+
+            $pendientes = $this->service->listarCitasPendientesPago($filtros);
             return response()->json([
                 'success' => true,
                 'data'    => $pendientes,
@@ -70,11 +99,22 @@ class CU23_GestionarPagosController extends Controller
     }
 
     /**
-     * Resumen de caja del día
+     * Resumen de caja del día (Exclusivo de Recepción y Administración)
      */
     public function resumenCaja(Request $request): JsonResponse
     {
         try {
+            $user = $request->user();
+            if ($user) {
+                $rol = strtoupper($user->rol?->nombre_rol ?? '');
+                if (in_array($rol, ['PACIENTE', 'CLIENTE'])) {
+                    return response()->json([
+                        'success' => false,
+                        'error'   => 'Acceso no autorizado: El arqueo de caja es exclusivo de Recepción y Administración.',
+                    ], 403);
+                }
+            }
+
             $resumen = $this->service->obtenerResumenCaja($request->query('fecha'));
             return response()->json([
                 'success' => true,

@@ -3,7 +3,7 @@ import { API_ENDPOINTS } from '@/config/api';
 
 const API_BASE = API_ENDPOINTS.citas;
 
-export const useCU10ReservaCitaController = () => {
+export const useCU10ReservaCitaController = (currentUser = null) => {
   // Lista de citas y paginación
   const [citas, setCitas] = useState([]);
   const [pagination, setPagination] = useState({
@@ -64,8 +64,12 @@ export const useCU10ReservaCitaController = () => {
       if (filterEspecialidad) params.append('id_especialidad', filterEspecialidad);
       if (filterEstado) params.append('estado_cita', filterEstado);
       if (filterFecha) params.append('fecha', filterFecha);
+      if (currentUser?.id_paciente) params.append('id_paciente', String(currentUser.id_paciente));
 
-      const res = await fetch(`${API_BASE}?${params.toString()}`);
+      const headers = { Accept: 'application/json' };
+      if (currentUser?.token) headers['Authorization'] = `Bearer ${currentUser.token}`;
+
+      const res = await fetch(`${API_BASE}?${params.toString()}`, { headers });
       if (!res.ok) throw new Error(`Error HTTP ${res.status}`);
       const data = await res.json();
 
@@ -91,7 +95,14 @@ export const useCU10ReservaCitaController = () => {
    */
   const fetchMeta = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/meta`);
+      const metaUrl = currentUser?.id_paciente
+        ? `${API_BASE}/meta?id_paciente=${currentUser.id_paciente}`
+        : `${API_BASE}/meta`;
+
+      const headers = { Accept: 'application/json' };
+      if (currentUser?.token) headers['Authorization'] = `Bearer ${currentUser.token}`;
+
+      const res = await fetch(metaUrl, { headers });
       if (!res.ok) throw new Error(`Error HTTP ${res.status}`);
       const data = await res.json();
 
@@ -104,7 +115,7 @@ export const useCU10ReservaCitaController = () => {
     } catch (err) {
       console.error('Error al cargar metadatos de citas:', err);
     }
-  }, []);
+  }, [currentUser?.id_paciente, currentUser?.token]);
 
   useEffect(() => {
     fetchMeta();

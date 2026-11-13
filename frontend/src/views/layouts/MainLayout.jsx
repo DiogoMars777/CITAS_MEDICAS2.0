@@ -663,19 +663,19 @@ export const MainLayout = ({ currentUser, onLogout }) => {
 
               {activeCUId === 'CU23' && <CU23_GestionarPagosView currentUser={currentUser} />}
 
-              {activeCUId === 'CU12' && <CU12_CancelarCitaView />}
+              {activeCUId === 'CU12' && <CU12_CancelarCitaView currentUser={currentUser} />}
 
-              {activeCUId === 'CU11' && <CU11_ReprogramarCitaView />}
+              {activeCUId === 'CU11' && <CU11_ReprogramarCitaView currentUser={currentUser} />}
 
-              {activeCUId === 'CU10' && <CU10_ReservarCitaView />}
+              {activeCUId === 'CU10' && <CU10_ReservarCitaView currentUser={currentUser} />}
 
-              {activeCUId === 'CU09' && <CU09_DisponibilidadView />}
+              {activeCUId === 'CU09' && <CU09_DisponibilidadView currentUser={currentUser} />}
 
-              {activeCUId === 'CU08' && <CU08_BloqueosView />}
+              {activeCUId === 'CU08' && <CU08_BloqueosView currentUser={currentUser} />}
 
-              {activeCUId === 'CU07' && <CU07_TurnosView />}
+              {activeCUId === 'CU07' && <CU07_TurnosView currentUser={currentUser} />}
 
-              {activeCUId === 'CU06' && <CU06_PacientesView />}
+              {activeCUId === 'CU06' && <CU06_PacientesView currentUser={currentUser} />}
 
               {activeCUId === 'CU05' && <CU05_MedicosView />}
 

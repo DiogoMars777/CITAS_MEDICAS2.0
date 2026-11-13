@@ -450,7 +450,6 @@ export const ROLE_PERMISSIONS = {
       'CU12', // Cancelar mi Cita
       'CU09', // Consultar Horarios Disponibles
       'CU23', // Mis Pagos y Comprobantes
-      'CU06', // Mi Ficha de Paciente
       'CU14', // Mis Antecedentes y Alergias
       'CU18', // Mis Resultados de Laboratorio
       'CU24', // Asistente IA para Reserva por Voz

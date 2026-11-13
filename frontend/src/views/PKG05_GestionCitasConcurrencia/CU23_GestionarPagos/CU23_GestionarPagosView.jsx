@@ -54,7 +54,7 @@ export const CU23_GestionarPagosView = ({ currentUser }) => {
     cargarDatos,
   } = useGestionarPagos(currentUser);
 
-  const isPaciente = currentUser?.rol === 'Paciente' || currentUser?.rol === 'paciente';
+  const isPaciente = ['PACIENTE', 'CLIENTE'].includes(currentUser?.rol?.toUpperCase?.());
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', color: '#0f172a' }}>

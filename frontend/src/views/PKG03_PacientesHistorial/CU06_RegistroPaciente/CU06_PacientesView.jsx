@@ -19,6 +19,7 @@ import {
   FileText,
   Heart,
   Calendar,
+  ShieldAlert,
 } from 'lucide-react';
 
 import { useCU06PacienteController } from '../../../controllers/PKG03_PacientesHistorial/CU06_RegistroPaciente/CU06_PacienteController';
@@ -27,7 +28,23 @@ import { ModalPacienteForm } from './ModalPacienteForm';
 import { ModalConfirmarEstadoPac } from './ModalConfirmarEstadoPac';
 import { ModalDetallePaciente } from './ModalDetallePaciente';
 
-export const CU06_PacientesView = () => {
+export const CU06_PacientesView = ({ currentUser = null }) => {
+  const isPaciente = ['PACIENTE', 'CLIENTE'].includes(currentUser?.rol?.toUpperCase?.());
+
+  if (isPaciente) {
+    return (
+      <div style={{ padding: '3rem 2rem', textAlign: 'center', background: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.03)', maxWidth: '600px', margin: '2rem auto' }}>
+        <div style={{ width: '64px', height: '64px', borderRadius: '16px', background: '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.25rem' }}>
+          <ShieldAlert size={36} color="#dc2626" />
+        </div>
+        <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', margin: '0 0 0.5rem' }}>Acceso Exclusivo de Recepción</h3>
+        <p style={{ color: '#64748b', fontSize: '0.9rem', lineHeight: 1.5, margin: 0 }}>
+          El registro y apertura de historias clínicas de pacientes es una función exclusiva del personal de Recepción y Administración de la Clínica Vida Salud.
+        </p>
+      </div>
+    );
+  }
+
   const {
     pacientes,
     pagination,

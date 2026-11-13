@@ -32,9 +32,22 @@ class CU10_ReservaCitaController extends Controller
     {
         $timezone = 'America/La_Paz';
         $ahoraBolivia = Carbon::now($timezone);
+        $user = $request->user();
 
-        $pacientes = Paciente::with('historiaClinica')
-            ->where('estado', 'ACTIVO')
+        $pacientesQuery = Paciente::with('historiaClinica')
+            ->where('estado', 'ACTIVO');
+
+        // Regla de Privacidad: El paciente solo se ve a sí mismo en selectores; Recepción ve todos
+        if ($user) {
+            $rol = strtoupper($user->rol?->nombre_rol ?? '');
+            if (in_array($rol, ['PACIENTE', 'CLIENTE'])) {
+                $pacientesQuery->where('id_usuario', $user->id_usuario);
+            }
+        } elseif ($request->filled('id_paciente')) {
+            $pacientesQuery->where('id_paciente', (int) $request->input('id_paciente'));
+        }
+
+        $pacientes = $pacientesQuery
             ->orderBy('apellidos', 'asc')
             ->orderBy('nombres', 'asc')
             ->get()
@@ -135,6 +148,25 @@ class CU10_ReservaCitaController extends Controller
             $query->whereDate('fecha_cita', $request->input('fecha'));
         }
 
+        // Regla de Visibilidad: Paciente solo puede ver sus propias reservas (Recepción ve todas)
+        $user = $request->user();
+        $idPacienteFiltro = null;
+        if ($user) {
+            $rol = strtoupper($user->rol?->nombre_rol ?? '');
+            if (in_array($rol, ['PACIENTE', 'CLIENTE'])) {
+                $paciente = Paciente::where('id_usuario', $user->id_usuario)->first();
+                $idPacienteFiltro = $paciente?->id_paciente;
+            } elseif ($request->filled('id_paciente')) {
+                $idPacienteFiltro = (int) $request->input('id_paciente');
+            }
+        } elseif ($request->filled('id_paciente')) {
+            $idPacienteFiltro = (int) $request->input('id_paciente');
+        }
+
+        if ($idPacienteFiltro) {
+            $query->where('citas.id_paciente', $idPacienteFiltro);
+        }
+
         $query->orderBy('fecha_cita', 'desc')
               ->orderBy('hora_inicio', 'desc');
 
@@ -171,13 +203,18 @@ class CU10_ReservaCitaController extends Controller
         });
 
         $hoyStr = $ahoraBolivia->format('Y-m-d');
+        $kpiQuery = Cita::query();
+        if ($idPacienteFiltro) {
+            $kpiQuery->where('id_paciente', $idPacienteFiltro);
+        }
+
         $kpis = [
-            'total_citas'       => Cita::count(),
-            'citas_programadas' => Cita::where('estado_cita', 'PROGRAMADA')->count(),
-            'citas_confirmadas' => Cita::where('estado_cita', 'CONFIRMADA')->count(),
-            'citas_atendidas'   => Cita::where('estado_cita', 'ATENDIDA')->count(),
-            'citas_canceladas'  => Cita::where('estado_cita', 'CANCELADA')->count(),
-            'citas_hoy'         => Cita::whereDate('fecha_cita', $hoyStr)->count(),
+            'total_citas'       => (clone $kpiQuery)->count(),
+            'citas_programadas' => (clone $kpiQuery)->where('estado_cita', 'PROGRAMADA')->count(),
+            'citas_confirmadas' => (clone $kpiQuery)->where('estado_cita', 'CONFIRMADA')->count(),
+            'citas_atendidas'   => (clone $kpiQuery)->where('estado_cita', 'ATENDIDA')->count(),
+            'citas_canceladas'  => (clone $kpiQuery)->where('estado_cita', 'CANCELADA')->count(),
+            'citas_hoy'         => (clone $kpiQuery)->whereDate('fecha_cita', $hoyStr)->count(),
         ];
 
         return response()->json([

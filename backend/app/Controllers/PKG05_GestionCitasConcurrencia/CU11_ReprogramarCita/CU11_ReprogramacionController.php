@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
 use App\Models\PKG05_GestionCitasConcurrencia\CU10_ReservarCita\Cita;
+use App\Models\PKG03_PacientesHistorial\CU06_RegistroPaciente\Paciente;
 use App\Models\PKG05_GestionCitasConcurrencia\CU11_ReprogramarCita\HistorialReprogramacion;
 use App\Models\PKG05_GestionCitasConcurrencia\CU12_CancelarCita\CancelacionCita;
 use App\Models\PKG04_AgendasHorarios\CU08_BloqueosAgenda\BloqueoAgenda;
@@ -47,6 +48,21 @@ class CU11_ReprogramacionController extends Controller
 
         if (!$cita) {
             return response()->json(['success' => false, 'message' => 'Cita no encontrada.'], 404);
+        }
+
+        // Regla de Seguridad: Paciente solo puede reprogramar su propia cita (Recepción puede de todos)
+        $user = $request->user();
+        if ($user) {
+            $rol = strtoupper($user->rol?->nombre_rol ?? '');
+            if (in_array($rol, ['PACIENTE', 'CLIENTE'])) {
+                $paciente = Paciente::where('id_usuario', $user->id_usuario)->first();
+                if (!$paciente || $cita->id_paciente !== $paciente->id_paciente) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Violación de seguridad: No tiene autorización para reprogramar citas de otro paciente.',
+                    ], 403);
+                }
+            }
         }
 
         if (in_array($cita->estado_cita, ['CANCELADA', 'ATENDIDA'])) {

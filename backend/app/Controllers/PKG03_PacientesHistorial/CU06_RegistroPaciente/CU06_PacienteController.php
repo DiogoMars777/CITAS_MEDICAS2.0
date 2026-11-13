@@ -23,7 +23,16 @@ class CU06_PacienteController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
+        $user = $request->user();
         $query = Paciente::with(['usuario', 'contactoEmergencia', 'historiaClinica']);
+
+        // Regla de Privacidad: Pacientes solo pueden ver su propio registro (Recepcionistas y Admin ven todos)
+        if ($user) {
+            $rol = strtoupper($user->rol?->nombre_rol ?? '');
+            if (in_array($rol, ['PACIENTE', 'CLIENTE'])) {
+                $query->where('pacientes.id_usuario', $user->id_usuario);
+            }
+        }
 
         // 1. Filtro por Estado (ACTIVO / INACTIVO)
         if ($request->filled('estado')) {
@@ -122,6 +131,16 @@ class CU06_PacienteController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
+        $user = $request->user();
+        if ($user) {
+            $rol = strtoupper($user->rol?->nombre_rol ?? '');
+            if (in_array($rol, ['PACIENTE', 'CLIENTE', 'MEDICO'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Acceso denegado: Solo el personal de Recepción o Administración tiene autorización para registrar pacientes y aperturar historias clínicas.',
+                ], 403);
+            }
+        }
         $rules = [
             'ci'               => 'required|string|min:4|max:20|unique:pacientes,ci',
             'nombres'          => 'required|string|min:2|max:80',

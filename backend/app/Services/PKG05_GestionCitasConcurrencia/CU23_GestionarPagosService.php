@@ -66,6 +66,10 @@ class CU23_GestionarPagosService
             $query->where('metodo_pago', strtoupper($filtros['metodo_pago']));
         }
 
+        if (!empty($filtros['id_paciente'])) {
+            $query->where('id_paciente', (int) $filtros['id_paciente']);
+        }
+
         if (!empty($filtros['estado_pago'])) {
             $query->where('estado_pago', strtoupper($filtros['estado_pago']));
         }
@@ -125,6 +129,10 @@ class CU23_GestionarPagosService
 
         if (!empty($filtros['fecha'])) {
             $query->whereDate('fecha_cita', $filtros['fecha']);
+        }
+
+        if (!empty($filtros['id_paciente'])) {
+            $query->where('id_paciente', (int) $filtros['id_paciente']);
         }
 
         if (!empty($filtros['buscar'])) {
