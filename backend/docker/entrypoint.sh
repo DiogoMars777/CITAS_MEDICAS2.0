@@ -34,6 +34,8 @@ chmod -R 777 /var/www/html/storage /var/www/html/bootstrap/cache
 
 # Generar archivo .env dinámico desde las variables inyectadas por Railway para que Laravel y PHP-FPM las tengan siempre disponibles
 printenv | grep -E '^(APP_|DB_|CACHE_|SESSION_|QUEUE_|MAIL_|LOG_|BCRYPT_|SANCTUM_|CORS_|RUN_)' > /var/www/html/.env || true
+# Sanitizar variables por si alguien pegó "KEY=VAL" en el campo de valor de Railway
+sed -i -E 's/^([A-Z0-9_]+)=\1=/\1=/' /var/www/html/.env 2>/dev/null || true
 chown www-data:www-data /var/www/html/.env 2>/dev/null || true
 chmod 644 /var/www/html/.env 2>/dev/null || true
 
