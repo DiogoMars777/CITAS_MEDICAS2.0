@@ -1,12 +1,14 @@
 #!/bin/sh
-set -e
 
-# Asignar puerto por defecto si Railway o el entorno no lo definieron
 export PORT="${PORT:-8000}"
 echo "🚀 Iniciando contenedor Clínica Vida Salud en el puerto: ${PORT}"
 
 # Sustituir variables en la plantilla de Nginx
 envsubst '${PORT}' < /etc/nginx/templates/default.conf.template > /etc/nginx/http.d/default.conf
+
+# Crear carpetas temporales de Nginx y permisos
+mkdir -p /run/nginx /var/log/supervisor /var/lib/nginx/tmp /run
+chown -R nginx:nginx /var/lib/nginx /run/nginx 2>/dev/null || true
 
 # Asegurar directorios requeridos por Laravel y permisos de www-data
 mkdir -p \
@@ -19,26 +21,16 @@ mkdir -p \
 chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
-# Crear enlace simbólico de almacenamiento público si no existe
-if [ ! -L /var/www/html/public/storage ]; then
-    echo "🔗 Creando storage:link..."
-    php artisan storage:link || true
-fi
+# Enlace de almacenamiento público
+php artisan storage:link 2>/dev/null || true
 
-# Ejecutar optimizaciones en producción sólo si APP_KEY está configurada
-if [ -n "$APP_KEY" ]; then
-    echo "⚡ Optimizando caches de Laravel..."
-    php artisan config:cache || true
-    php artisan route:cache || true
-    php artisan view:cache || true
-fi
+# Limpiar caches previas para asegurar que lea las variables de Railway en vivo
+php artisan config:clear || true
+php artisan route:clear || true
 
-# Ejecutar migraciones automáticas si RUN_MIGRATIONS=true o si estamos en Railway con DB conectada
-if [ "$RUN_MIGRATIONS" = "true" ] || [ -n "$DB_HOST" ]; then
-    echo "📦 Ejecutando migraciones de base de datos..."
-    php artisan migrate --force || echo "⚠️ Advertencia: No se pudieron ejecutar migraciones automáticas al iniciar."
-fi
+# Test de configuración Nginx y PHP-FPM para depuración en logs de Railway
+nginx -t || echo "⚠️ Advertencia Nginx test"
+/usr/local/sbin/php-fpm -t || echo "⚠️ Advertencia PHP-FPM test"
 
 echo "🟢 Servidor listo. Arrancando Supervisord (Nginx + PHP-FPM)..."
 exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf
-
