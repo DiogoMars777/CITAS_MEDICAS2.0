@@ -56,6 +56,15 @@ class CU11_ReprogramacionController extends Controller
             ], 422);
         }
 
+        // Política Institucional: Solo se permite reprogramar citas cuyo pago esté completado
+        if (!$cita->estaPagada()) {
+            return response()->json([
+                'success'          => false,
+                'payment_required' => true,
+                'message'          => 'Política de la Clínica: Solo se pueden reprogramar citas con pago confirmado. Las citas pendientes de pago deben abonarse o están sujetas a cancelación automática 24 horas antes.',
+            ], 422);
+        }
+
         $timezone = 'America/La_Paz';
         $ahoraBolivia = Carbon::now($timezone);
         $usuarioId = $request->user()?->id_usuario ?? 1;

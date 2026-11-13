@@ -79,6 +79,9 @@ class CU09_DisponibilidadController extends Controller
      */
     public function consultar(Request $request): JsonResponse
     {
+        // Cancelar automáticamente citas impagas de 24 horas antes para liberar los slots inmediatamente
+        Cita::cancelarCitasImpagasVencidas();
+
         $timezone = 'America/La_Paz';
         $ahoraBolivia = Carbon::now($timezone);
 

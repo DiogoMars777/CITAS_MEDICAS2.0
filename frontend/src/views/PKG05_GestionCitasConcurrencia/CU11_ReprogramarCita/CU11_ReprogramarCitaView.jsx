@@ -243,7 +243,8 @@ export const CU11_ReprogramarCitaView = () => {
             ) : (
               citas.map((c) => {
                 const st = ESTADOS_CITA[c.estado_cita] || ESTADOS_CITA.PROGRAMADA;
-                const canReprogram = ['PROGRAMADA', 'CONFIRMADA'].includes(c.estado_cita);
+                const isPaid = Boolean(c.esta_pagada);
+                const canReprogram = ['PROGRAMADA', 'CONFIRMADA'].includes(c.estado_cita) && isPaid;
 
                 return (
                   <tr key={c.id_cita} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.15s ease' }}>
@@ -269,9 +270,20 @@ export const CU11_ReprogramarCitaView = () => {
                       <div style={{ fontSize: '0.78rem', color: '#0284c7', fontWeight: 500 }}>{c.especialidad_nombre}</div>
                     </td>
                     <td style={{ padding: '1rem' }}>
-                      <span style={{ fontSize: '0.75rem', fontWeight: 700, padding: '3px 10px', borderRadius: '12px', background: st.bg, color: st.text, border: `1px solid ${st.border}` }}>
-                        {st.label}
-                      </span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 700, padding: '3px 10px', borderRadius: '12px', background: st.bg, color: st.text, border: `1px solid ${st.border}`, width: 'fit-content' }}>
+                          {st.label}
+                        </span>
+                        {isPaid ? (
+                          <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#059669', background: '#ecfdf5', border: '1px solid #a7f3d0', padding: '2px 8px', borderRadius: '10px', width: 'fit-content' }}>
+                            ✓ Pagada (Reprogramable)
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#dc2626', background: '#fef2f2', border: '1px solid #fecaca', padding: '2px 8px', borderRadius: '10px', width: 'fit-content' }}>
+                            ⚠ Sin Pago (Bloqueada)
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td style={{ padding: '1rem', textAlign: 'right' }}>
                       <div style={{ display: 'inline-flex', gap: '0.5rem' }}>
@@ -300,9 +312,15 @@ export const CU11_ReprogramarCitaView = () => {
                         </button>
 
                         <button
-                          onClick={() => setSelectedCitaForReprogram(c)}
+                          onClick={() => {
+                            if (!isPaid) {
+                              alert('No es posible reprogramar una cita no pagada. La política de la clínica exige registrar el pago previo para acceder a la reprogramación.');
+                              return;
+                            }
+                            setSelectedCitaForReprogram(c);
+                          }}
                           disabled={!canReprogram}
-                          title={canReprogram ? 'Reprogramar cita médica' : 'Solo citas activas pueden reprogramarse'}
+                          title={!isPaid ? 'Solo citas pagadas pueden reprogramarse' : canReprogram ? 'Reprogramar cita médica' : 'Solo citas activas pueden reprogramarse'}
                           style={{
                             padding: '6px 12px',
                             borderRadius: '8px',

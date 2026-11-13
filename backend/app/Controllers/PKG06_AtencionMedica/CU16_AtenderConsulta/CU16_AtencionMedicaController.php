@@ -40,6 +40,15 @@ class CU16_AtencionMedicaController extends Controller
             ], 422);
         }
 
+        // Precondición de Atención Clínica: La cita debe estar pagada (al menos 1 día antes o regularizada)
+        if (!$cita->estaPagada()) {
+            return response()->json([
+                'status'           => 'error',
+                'payment_required' => true,
+                'message'          => 'Precondición de Atención: El paciente debe abonar y confirmar el pago de la consulta antes de ingresar a consultorio.',
+            ], 402); // HTTP 402 Payment Required
+        }
+
         $paciente = $cita->paciente;
         $historia = $paciente ? $paciente->historiaClinica : null;
 

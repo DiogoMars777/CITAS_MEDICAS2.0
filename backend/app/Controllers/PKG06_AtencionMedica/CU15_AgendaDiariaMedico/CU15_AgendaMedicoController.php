@@ -37,7 +37,10 @@ class CU15_AgendaMedicoController extends Controller
             ], 404);
         }
 
-        // Consultar citas del médico en la fecha indicada en orden cronológico (bloques de 15 min)
+        // Aplicar cancelación automática de citas impagas cuyo plazo de 24 horas previas venció
+        Cita::cancelarCitasImpagasVencidas();
+
+        // Consultar citas del médico en la fecha indicada en orden cronológico estricto (bloques de 15 min)
         $citas = Cita::where('id_medico', $medico->id_medico)
             ->whereDate('fecha_cita', $fecha)
             ->with([
@@ -46,6 +49,7 @@ class CU15_AgendaMedicoController extends Controller
                 'especialidad',
                 'atencionMedica',
                 'laboratorios',
+                'pagos',
             ])
             ->orderBy('hora_inicio', 'asc')
             ->get();
@@ -117,6 +121,13 @@ class CU15_AgendaMedicoController extends Controller
                     'fecha_atencion'    => $cita->atencionMedica->fecha_atencion ? Carbon::parse($cita->atencionMedica->fecha_atencion)->format('d/m/Y H:i') : null,
                 ] : null,
                 'laboratorios_count' => $cita->laboratorios->count(),
+                'esta_pagada'        => $cita->estaPagada(),
+                'pago_info'          => $cita->ultimoPago ? [
+                    'monto'       => (float) $cita->ultimoPago->monto,
+                    'metodo'      => $cita->ultimoPago->metodo_pago,
+                    'comprobante' => $cita->ultimoPago->numero_comprobante,
+                    'fecha'       => $cita->ultimoPago->fecha_pago ? $cita->ultimoPago->fecha_pago->format('d/m/Y H:i') : null,
+                ] : null,
             ];
         });
 
@@ -185,6 +196,15 @@ class CU15_AgendaMedicoController extends Controller
                 'security_violation' => true,
                 'message' => 'Acceso denegado por privacidad médica: Este paciente no pertenece a su agenda de atención asignada.',
             ], 403);
+        }
+
+        // CONTROL DE PAGO PREVIO: Solo pacientes con pago completado pueden ser atendidos y revisados
+        if (!$cita->estaPagada()) {
+            return response()->json([
+                'status'           => 'error',
+                'payment_required' => true,
+                'message'          => 'Acceso restringido por política médica: La cita no cuenta con pago confirmado. El paciente debe regularizar su consulta antes de abrir su expediente.',
+            ], 402);
         }
 
         $paciente = $cita->paciente;

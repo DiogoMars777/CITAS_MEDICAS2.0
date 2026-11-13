@@ -16,3 +16,11 @@ Schedule::command('backup:run-scheduled')
     ->everyMinute()
     ->withoutOverlapping()
     ->runInBackground();
+
+/**
+ * Cancelación automática de citas no pagadas con 24 horas de antelación
+ */
+Schedule::command('citas:cancelar-impagas')
+    ->hourly()
+    ->withoutOverlapping()
+    ->runInBackground();

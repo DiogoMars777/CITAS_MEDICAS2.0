@@ -645,23 +645,60 @@ export const CU15_AgendaMedicoView = ({ onNavigateToCU16 }) => {
                         )}
                       </td>
 
-                      {/* ESTADO */}
+                      {/* ESTADO Y PAGO */}
                       <td style={{ padding: '0.85rem 1rem', whiteSpace: 'nowrap' }}>
-                        <span style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '5px',
-                          padding: '3px 10px',
-                          borderRadius: '20px',
-                          background: badge.bg,
-                          color: badge.color,
-                          border: `1px solid ${badge.border}`,
-                          fontSize: '0.74rem',
-                          fontWeight: 700,
-                        }}>
-                          <BadgeIcon size={13} />
-                          {badge.text}
-                        </span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            padding: '3px 10px',
+                            borderRadius: '20px',
+                            background: badge.bg,
+                            color: badge.color,
+                            border: `1px solid ${badge.border}`,
+                            fontSize: '0.74rem',
+                            fontWeight: 700,
+                            width: 'fit-content',
+                          }}>
+                            <BadgeIcon size={13} />
+                            {badge.text}
+                          </span>
+                          {/* Badge de Verificación de Pago 24h */}
+                          {item.esta_pagada ? (
+                            <span style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              padding: '2px 8px',
+                              borderRadius: '10px',
+                              background: '#ecfdf5',
+                              color: '#059669',
+                              border: '1px solid #a7f3d0',
+                              fontSize: '0.68rem',
+                              fontWeight: 700,
+                              width: 'fit-content',
+                            }}>
+                              ✓ Pagado (24h OK)
+                            </span>
+                          ) : (
+                            <span style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              padding: '2px 8px',
+                              borderRadius: '10px',
+                              background: '#fef2f2',
+                              color: '#dc2626',
+                              border: '1px solid #fecaca',
+                              fontSize: '0.68rem',
+                              fontWeight: 700,
+                              width: 'fit-content',
+                            }}>
+                              ⚠ Pago Pendiente
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       {/* ACCIONES CLÍNICAS */}
@@ -669,48 +706,78 @@ export const CU15_AgendaMedicoView = ({ onNavigateToCU16 }) => {
                         <div style={{ display: 'inline-flex', gap: '6px' }}>
                           {/* VER EXPEDIENTE CONFIDENCIAL */}
                           <button
-                            onClick={() => abrirExpediente(item.id_cita)}
+                            onClick={() => {
+                              if (!item.esta_pagada) {
+                                alert('Acceso denegado: El paciente no ha realizado el pago de la consulta (Requisito mínimo 24h antes). No se puede exponer el expediente clínico.');
+                                return;
+                              }
+                              abrirExpediente(item.id_cita);
+                            }}
                             style={{
                               padding: '0.45rem 0.75rem',
                               borderRadius: '8px',
                               border: '1px solid #e2e8f0',
-                              background: '#ffffff',
-                              color: '#334155',
+                              background: item.esta_pagada ? '#ffffff' : '#f8fafc',
+                              color: item.esta_pagada ? '#334155' : '#94a3b8',
                               fontSize: '0.76rem',
                               fontWeight: 700,
-                              cursor: 'pointer',
+                              cursor: item.esta_pagada ? 'pointer' : 'not-allowed',
                               display: 'flex',
                               alignItems: 'center',
                               gap: '4px',
                             }}
-                            title="Ver expediente clínico seguro"
+                            title={item.esta_pagada ? "Ver expediente clínico seguro" : "Requiere pago previo de la cita"}
                           >
-                            <FileText size={14} color="#0284c7" />
+                            <FileText size={14} color={item.esta_pagada ? "#0284c7" : "#94a3b8"} />
                             <span>Expediente</span>
                           </button>
 
                           {/* ATENDER CONSULTA (CONDUCE A CU16) */}
                           <button
                             onClick={() => {
+                              if (item.estado_cita === 'CANCELADA') {
+                                alert('Esta cita ha sido cancelada.');
+                                return;
+                              }
+                              if (!item.esta_pagada) {
+                                alert('Atención bloqueada: El paciente debe cancelar el monto de la cita al menos 24 horas antes de su horario asignado.');
+                                return;
+                              }
                               if (onNavigateToCU16) {
                                 onNavigateToCU16(item.id_cita);
                               }
                             }}
+                            disabled={!item.esta_pagada || item.estado_cita === 'CANCELADA'}
                             style={{
                               padding: '0.45rem 0.85rem',
                               borderRadius: '8px',
-                              border: '1px solid #0284c7',
-                              background: item.estado_cita === 'ATENDIDA' ? '#f0fdf4' : '#0284c7',
-                              color: item.estado_cita === 'ATENDIDA' ? '#16a34a' : '#ffffff',
-                              borderColor: item.estado_cita === 'ATENDIDA' ? '#bbf7d0' : '#0284c7',
+                              border: '1px solid',
+                              background: (!item.esta_pagada || item.estado_cita === 'CANCELADA')
+                                ? '#f1f5f9'
+                                : item.estado_cita === 'ATENDIDA'
+                                ? '#f0fdf4'
+                                : '#0284c7',
+                              color: (!item.esta_pagada || item.estado_cita === 'CANCELADA')
+                                ? '#94a3b8'
+                                : item.estado_cita === 'ATENDIDA'
+                                ? '#16a34a'
+                                : '#ffffff',
+                              borderColor: (!item.esta_pagada || item.estado_cita === 'CANCELADA')
+                                ? '#e2e8f0'
+                                : item.estado_cita === 'ATENDIDA'
+                                ? '#bbf7d0'
+                                : '#0284c7',
                               fontSize: '0.76rem',
                               fontWeight: 700,
-                              cursor: 'pointer',
+                              cursor: (!item.esta_pagada || item.estado_cita === 'CANCELADA') ? 'not-allowed' : 'pointer',
                               display: 'flex',
                               alignItems: 'center',
                               gap: '4px',
-                              boxShadow: item.estado_cita === 'ATENDIDA' ? 'none' : '0 2px 6px rgba(2, 132, 199, 0.3)',
+                              boxShadow: (item.esta_pagada && item.estado_cita !== 'ATENDIDA' && item.estado_cita !== 'CANCELADA')
+                                ? '0 2px 6px rgba(2, 132, 199, 0.3)'
+                                : 'none',
                             }}
+                            title={!item.esta_pagada ? "Cita impaga: atención bloqueada" : "Atender consulta según turno"}
                           >
                             <Stethoscope size={14} />
                             <span>{item.estado_cita === 'ATENDIDA' ? 'Ver Consulta' : 'Atender (CU16)'}</span>

@@ -97,4 +97,48 @@ class Cita extends Model
     {
         return $this->hasOne(\App\Models\PKG05_GestionCitasConcurrencia\CU23_GestionarPagos\Pago::class, 'id_cita', 'id_cita')->latest('fecha_pago');
     }
+
+    /**
+     * Verifica si la cita médica se encuentra pagada con comprobante confirmado
+     */
+    public function estaPagada(): bool
+    {
+        return $this->pagos()->where('estado_pago', 'COMPLETADO')->exists();
+    }
+
+    /**
+     * Cancela automáticamente las citas médicas sin pago cuyo plazo de 24 horas previas venció.
+     * Política Clínica: El paciente debe pagar al menos 1 día antes para asegurar su cupo.
+     */
+    public static function cancelarCitasImpagasVencidas(): int
+    {
+        $ahora = \Carbon\Carbon::now('America/La_Paz');
+        $fechaLimite = $ahora->copy()->addDay()->toDateString();
+
+        $citasVencidas = self::where('estado_cita', 'PROGRAMADA')
+            ->whereDate('fecha_cita', '<=', $fechaLimite)
+            ->whereDoesntHave('pagos', function ($q) {
+                $q->where('estado_pago', 'COMPLETADO');
+            })
+            ->get();
+
+        $canceladas = 0;
+
+        foreach ($citasVencidas as $cita) {
+            \Illuminate\Support\Facades\DB::transaction(function () use ($cita, $ahora) {
+                $cita->estado_cita = 'CANCELADA';
+                $cita->save();
+
+                \App\Models\PKG05_GestionCitasConcurrencia\CU12_CancelarCita\CancelacionCita::create([
+                    'id_cita'                => $cita->id_cita,
+                    'motivo_cancelacion'     => 'Cancelación automática por falta de pago anticipado (plazo límite: 24 horas antes de la cita).',
+                    'id_usuario_responsable' => 1,
+                    'fecha_cancelacion'      => $ahora,
+                ]);
+            });
+            $canceladas++;
+        }
+
+        return $canceladas;
+    }
 }

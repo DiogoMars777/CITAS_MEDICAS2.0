@@ -88,6 +88,9 @@ class CU10_ReservaCitaController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
+        // Cancelar citas vencidas por falta de pago previo de 24 horas
+        Cita::cancelarCitasImpagasVencidas();
+
         $timezone = 'America/La_Paz';
         $ahoraBolivia = Carbon::now($timezone);
 
@@ -96,6 +99,7 @@ class CU10_ReservaCitaController extends Controller
             'medico.especialidades',
             'especialidad',
             'creador',
+            'pagos',
         ]);
 
         if ($request->filled('search')) {
@@ -162,6 +166,7 @@ class CU10_ReservaCitaController extends Controller
                 'especialidad_nombre'    => $esp?->nombre ?? 'Medicina General',
                 'creado_por'             => $cita->creador?->nombre_completo ?? 'Sistema',
                 'fecha_creacion'         => $cita->fecha_creacion,
+                'esta_pagada'            => $cita->estaPagada(),
             ];
         });
 
