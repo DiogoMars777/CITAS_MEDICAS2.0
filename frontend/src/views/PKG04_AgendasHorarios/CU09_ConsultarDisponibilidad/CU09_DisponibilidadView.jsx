@@ -19,7 +19,7 @@ import { useCU09DisponibilidadController } from '../../../controllers/PKG04_Agen
 import { ESTADOS_SLOT } from '../../../models/PKG04_AgendasHorarios/CU09_ConsultarDisponibilidad/DisponibilidadModel';
 import { ModalDetalleSlot } from './ModalDetalleSlot';
 
-export const CU09_DisponibilidadView = () => {
+export const CU09_DisponibilidadView = ({ currentUser = null, onReservarSlot = null }) => {
   const {
     fecha,
     setFecha,
@@ -354,6 +354,26 @@ export const CU09_DisponibilidadView = () => {
         slot={slotSelected}
         medico={medicoSelected}
         fecha={fecha}
+        onReservar={(slot, medico, fechaCita) => {
+          const prefillData = {
+            id_medico: String(medico.id_medico),
+            id_especialidad: medico.id_especialidad ? String(medico.id_especialidad) : '',
+            fecha_cita: fechaCita,
+            hora_inicio: slot.hora_inicio,
+            hora_fin: slot.hora_fin,
+            medico_nombre: medico.nombre_completo,
+            especialidad_nombre: medico.especialidad_principal,
+          };
+          try {
+            sessionStorage.setItem('prefill_reserva_cu10', JSON.stringify(prefillData));
+          } catch (e) {
+            console.warn('Could not save prefill to sessionStorage:', e);
+          }
+          cerrarDetalleSlot();
+          if (onReservarSlot) {
+            onReservarSlot(slot, medico, fechaCita, prefillData);
+          }
+        }}
       />
     </div>
   );

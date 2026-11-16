@@ -27,7 +27,11 @@ import ModalGestionPago from '../CU23_GestionarPagos/ModalGestionPago';
 import ModalComprobantePago from '../CU23_GestionarPagos/ModalComprobantePago';
 import CU23_GestionarPagosModel from '../../../models/PKG05_GestionCitasConcurrencia/CU23_GestionarPagos/CU23_GestionarPagosModel';
 
-export const CU10_ReservarCitaView = ({ currentUser = null }) => {
+export const CU10_ReservarCitaView = ({
+  currentUser = null,
+  initialPrefill = null,
+  onClearPrefill = null,
+}) => {
   const {
     citas,
     pagination,
@@ -69,6 +73,27 @@ export const CU10_ReservarCitaView = ({ currentUser = null }) => {
   const [modalComprobanteOpen, setModalComprobanteOpen] = React.useState(false);
   const [comprobanteGenerado, setComprobanteGenerado] = React.useState(null);
   const [pagoLoading, setPagoLoading] = React.useState(false);
+
+  // Estado de prellenado de reserva asistida (desde CU09 u otro flujo)
+  const [activePrefill, setActivePrefill] = React.useState(initialPrefill);
+
+  React.useEffect(() => {
+    if (initialPrefill) {
+      setActivePrefill(initialPrefill);
+      setModalReservaOpen(true);
+    } else {
+      try {
+        const stored = sessionStorage.getItem('prefill_reserva_cu10');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          setActivePrefill(parsed);
+          setModalReservaOpen(true);
+        }
+      } catch (e) {
+        console.warn('Error reading prefill from sessionStorage:', e);
+      }
+    }
+  }, [initialPrefill, setModalReservaOpen]);
 
   const isPaciente = ['PACIENTE', 'CLIENTE'].includes((currentUser?.rol || '').toUpperCase().trim());
 
@@ -128,10 +153,27 @@ export const CU10_ReservarCitaView = ({ currentUser = null }) => {
     }
   };
 
-  const handleReservarCita = reservarCita;
+  const handleReservarCita = async (payload) => {
+    const res = await reservarCita(payload);
+    if (res && res.success) {
+      setActivePrefill(null);
+      try {
+        sessionStorage.removeItem('prefill_reserva_cu10');
+      } catch {}
+      if (onClearPrefill) onClearPrefill();
+    }
+    return res;
+  };
   const handleCambiarEstado = cambiarEstadoCita;
   const openReservaModal = () => setModalReservaOpen(true);
-  const closeReservaModal = () => setModalReservaOpen(false);
+  const closeReservaModal = () => {
+    setModalReservaOpen(false);
+    setActivePrefill(null);
+    try {
+      sessionStorage.removeItem('prefill_reserva_cu10');
+    } catch {}
+    if (onClearPrefill) onClearPrefill();
+  };
   const openFichaModal = verFichaCita;
   const closeFichaModal = () => setModalFichaOpen(false);
   const clearMessages = () => { setError(null); setSuccessMsg(null); };
@@ -860,6 +902,7 @@ export const CU10_ReservarCitaView = ({ currentUser = null }) => {
         medicosMeta={medicosMeta}
         loading={actionLoading}
         currentUser={currentUser}
+        initialPrefill={activePrefill}
       />
 
       {/* MODAL FICHA DE ATENCIÓN IMPRIMIBLE */}

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Modelo de datos y catálogo de plantillas clínicas para CU17 - Cargar estudios
  */
 export const initialCargaEstudioModel = {

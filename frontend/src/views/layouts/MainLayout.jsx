@@ -71,6 +71,14 @@ export const MainLayout = ({ currentUser, onLogout }) => {
   // Caso de uso activo por defecto: inicializa en la vista principal según el rol
   const [activeCUId, setActiveCUId] = useState(() => roleConfig.defaultCU);
   const [selectedCitaForCU16, setSelectedCitaForCU16] = useState(2);
+  const [prefillReservaCU10, setPrefillReservaCU10] = useState(null);
+
+  // Redirección y prellenado asistido desde CU09 (Disponibilidad) a CU10 (Reservar Cita)
+  const handleReservarDesdeCU09 = (slot, medico, fechaCita, prefillData) => {
+    setPrefillReservaCU10(prefillData);
+    setActiveCUId('CU10');
+    setExpandedPackages((prev) => ({ ...prev, PKG05: true }));
+  };
 
   // Control de apertura en móvil
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -678,9 +686,20 @@ export const MainLayout = ({ currentUser, onLogout }) => {
 
               {activeCUId === 'CU11' && <CU11_ReprogramarCitaView currentUser={currentUser} />}
 
-              {activeCUId === 'CU10' && <CU10_ReservarCitaView currentUser={currentUser} />}
+              {activeCUId === 'CU10' && (
+                <CU10_ReservarCitaView
+                  currentUser={currentUser}
+                  initialPrefill={prefillReservaCU10}
+                  onClearPrefill={() => setPrefillReservaCU10(null)}
+                />
+              )}
 
-              {activeCUId === 'CU09' && <CU09_DisponibilidadView currentUser={currentUser} />}
+              {activeCUId === 'CU09' && (
+                <CU09_DisponibilidadView
+                  currentUser={currentUser}
+                  onReservarSlot={handleReservarDesdeCU09}
+                />
+              )}
 
               {activeCUId === 'CU08' && <CU08_BloqueosView currentUser={currentUser} />}
 

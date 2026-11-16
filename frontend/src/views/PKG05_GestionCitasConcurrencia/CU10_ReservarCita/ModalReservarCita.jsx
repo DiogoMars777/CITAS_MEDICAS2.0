@@ -26,6 +26,7 @@ export const ModalReservarCita = ({
   medicosMeta = [],
   loading = false,
   currentUser = null,
+  initialPrefill = null,
 }) => {
   const [formData, setFormData] = useState(getInitialReservaFormState());
   const [localError, setLocalError] = useState(null);
@@ -39,7 +40,7 @@ export const ModalReservarCita = ({
   const [proximosDias, setProximosDias] = useState([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
 
-  // Reset del formulario al abrir
+  // Reset y/o prellenado del formulario al abrir
   useEffect(() => {
     if (isOpen) {
       const initial = getInitialReservaFormState();
@@ -47,6 +48,31 @@ export const ModalReservarCita = ({
       if (idPac) {
         initial.id_paciente = String(idPac);
       }
+
+      // Prellenado asistido desde CU09 (Disponibilidad de horarios médicos)
+      if (initialPrefill) {
+        if (initialPrefill.id_medico) {
+          initial.id_medico = String(initialPrefill.id_medico);
+        }
+        if (initialPrefill.id_especialidad) {
+          initial.id_especialidad = String(initialPrefill.id_especialidad);
+        } else if (initialPrefill.id_medico && medicosMeta?.length > 0) {
+          const med = medicosMeta.find((m) => String(m.id_medico) === String(initialPrefill.id_medico));
+          if (med?.especialidades_ids?.length > 0) {
+            initial.id_especialidad = String(med.especialidades_ids[0]);
+          }
+        }
+        if (initialPrefill.fecha_cita) {
+          initial.fecha_cita = initialPrefill.fecha_cita;
+        }
+        if (initialPrefill.hora_inicio) {
+          initial.hora_inicio = initialPrefill.hora_inicio;
+        }
+        if (initialPrefill.hora_fin) {
+          initial.hora_fin = initialPrefill.hora_fin;
+        }
+      }
+
       setFormData(initial);
       setLocalError(null);
       setPacienteSearch('');
@@ -54,7 +80,17 @@ export const ModalReservarCita = ({
       setAvailableSlots([]);
       setProximosDias([]);
     }
-  }, [isOpen, currentUser, pacientesMeta]);
+  }, [isOpen, currentUser, pacientesMeta, initialPrefill, medicosMeta]);
+
+  // Auto-seleccionar especialidad si médico fue preseleccionado y no tenía especialidad asignada en el form
+  useEffect(() => {
+    if (formData.id_medico && !formData.id_especialidad && medicosMeta?.length > 0) {
+      const med = medicosMeta.find((m) => String(m.id_medico) === String(formData.id_medico));
+      if (med?.especialidades_ids?.length > 0) {
+        setFormData((prev) => ({ ...prev, id_especialidad: String(med.especialidades_ids[0]) }));
+      }
+    }
+  }, [formData.id_medico, formData.id_especialidad, medicosMeta]);
 
   // Filtrar médicos según especialidad seleccionada
   const filteredMedicos = formData.id_especialidad
@@ -258,6 +294,34 @@ export const ModalReservarCita = ({
         {/* CUERPO DEL FORMULARIO */}
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
           <div style={{ padding: '1.5rem', overflowY: 'auto', flex: 1, color: '#0f172a' }}>
+            {initialPrefill && (
+              <div
+                style={{
+                  padding: '0.75rem 1rem',
+                  borderRadius: '10px',
+                  background: 'linear-gradient(135deg, #f0fdfa 0%, #e0f2fe 100%)',
+                  border: '1px solid #7dd3fc',
+                  color: '#0369a1',
+                  fontSize: '0.82rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.65rem',
+                  marginBottom: '1.25rem',
+                  boxShadow: '0 2px 4px rgba(2, 132, 199, 0.08)',
+                }}
+              >
+                <Sparkles size={18} color="#0284c7" />
+                <div>
+                  <div style={{ fontWeight: 800, color: '#0369a1' }}>
+                    ⚡ Cupo Preseleccionado desde Disponibilidad (CU09)
+                  </div>
+                  <div style={{ fontSize: '0.76rem', color: '#0284c7', marginTop: '2px' }}>
+                    Médico ({initialPrefill.medico_nombre || 'Seleccionado'}), fecha ({formData.fecha_cita}) y horario ({formData.hora_inicio} - {formData.hora_fin}) autocompletados. {currentUser?.id_paciente ? 'Verifique el motivo para confirmar su reserva.' : 'Seleccione el paciente y complete el motivo de consulta.'}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {localError && (
               <div
                 style={{
