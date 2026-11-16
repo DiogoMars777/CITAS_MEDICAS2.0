@@ -24,6 +24,10 @@ import {
   Zap,
   Sliders,
   Check,
+  Trash2,
+  Paperclip,
+  FileUp,
+  Image,
 } from 'lucide-react';
 import { useCU17CargaEstudioController } from '../../../controllers/PKG07_Laboratorios/CU17_CargarEstudios/CU17_CargaEstudioController';
 import {
@@ -67,19 +71,10 @@ export const CU17_CargarEstudiosView = ({ onNavigateToCU18 }) => {
   const [valoresParametros, setValoresParametros] = useState({});
   const [modoEntrada, setModoEntrada] = useState('GUIADO'); // 'GUIADO' | 'TEXTO'
 
-  // Al abrir el modal o cambiar de estudio, detectar la plantilla clínica y preparar parámetros
-  useEffect(() => {
-    if (modalCargaAbierto && estudioSeleccionado) {
-      const pl = detectarPlantillaEstudio(estudioSeleccionado.nombre_estudio);
-      setPlantillaSeleccionadaKey(pl.id);
-      setValoresParametros({});
-      setModoEntrada('GUIADO');
-    }
-  }, [modalCargaAbierto, estudioSeleccionado]);
-
-  const plantillaActiva =
-    (plantillaSeleccionadaKey && PLANTILLAS_LABORATORIO[plantillaSeleccionadaKey]) ||
-    (estudioSeleccionado ? detectarPlantillaEstudio(estudioSeleccionado.nombre_estudio) : null);
+  // Estado para carga de archivos adjuntos (PDF/Imagen)
+  const fileInputRef = React.useRef(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [archivoInfo, setArchivoInfo] = useState(null);
 
   const sincronizarTextoConParametros = (valores, plantilla) => {
     if (!plantilla || !plantilla.parametros) return;
@@ -103,6 +98,85 @@ export const CU17_CargarEstudiosView = ({ onNavigateToCU18 }) => {
     setFormResultado((prev) => ({
       ...prev,
       resultado_diagnostico: lineas.join('\n'),
+    }));
+  };
+
+  // Al abrir el modal o cambiar de estudio, detectar la plantilla clínica y preparar parámetros
+  useEffect(() => {
+    if (modalCargaAbierto && estudioSeleccionado) {
+      const pl = detectarPlantillaEstudio(estudioSeleccionado.nombre_estudio);
+      setPlantillaSeleccionadaKey(pl.id);
+      setModoEntrada('GUIADO');
+      setArchivoInfo(null);
+      setIsDragging(false);
+
+      if (estudioSeleccionado.resultado_diagnostico && estudioSeleccionado.resultado_diagnostico.trim()) {
+        setValoresParametros({});
+      } else if (pl && pl.parametros) {
+        // Pre-cargar valores normales por defecto para que la vista previa esté lista
+        const iniciales = {};
+        pl.parametros.forEach((p) => {
+          iniciales[p.id] = p.normal;
+        });
+        setValoresParametros(iniciales);
+        sincronizarTextoConParametros(iniciales, pl);
+      }
+    }
+  }, [modalCargaAbierto, estudioSeleccionado]);
+
+  const procesarArchivoSeleccionado = (file) => {
+    if (!file) return;
+
+    const tiposPermitidos = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+    const esPermitido = tiposPermitidos.includes(file.type) || /\.(pdf|jpg|jpeg|png|webp)$/i.test(file.name);
+    if (!esPermitido) {
+      alert('Formato no soportado. Por favor seleccione un archivo PDF o una Imagen (JPG, PNG, WEBP).');
+      return;
+    }
+
+    if (file.size > 20 * 1024 * 1024) {
+      alert('El archivo supera los 20 MB permitidos.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target.result;
+      const sizeKB = (file.size / 1024).toFixed(1);
+      const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+      const formattedSize = file.size >= 1024 * 1024 ? `${sizeMB} MB` : `${sizeKB} KB`;
+
+      setArchivoInfo({
+        name: file.name,
+        size: formattedSize,
+        type: file.type.includes('pdf') || file.name.toLowerCase().endsWith('.pdf') ? 'PDF' : 'IMAGEN',
+        preview: file.type.startsWith('image/') ? dataUrl : null,
+      });
+
+      setFormResultado((prev) => ({
+        ...prev,
+        archivo_file: file,
+        archivo_nombre: file.name,
+        archivo_base64: dataUrl,
+        archivo_resultado_url: `/uploads/laboratorios/${file.name}`,
+        resultado_diagnostico: prev.resultado_diagnostico?.trim()
+          ? prev.resultado_diagnostico
+          : `ESTUDIO DIGITALIZADO: Se adjunta informe de laboratorio escaneado (${file.name}). Parámetros analíticos procesados y avalados por el equipo clínico.`,
+      }));
+    };
+
+    reader.readAsDataURL(file);
+  };
+
+  const handleQuitarArchivo = () => {
+    setArchivoInfo(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    setFormResultado((prev) => ({
+      ...prev,
+      archivo_file: null,
+      archivo_nombre: '',
+      archivo_base64: null,
+      archivo_resultado_url: '',
     }));
   };
 
@@ -891,25 +965,194 @@ export const CU17_CargarEstudiosView = ({ onNavigateToCU18 }) => {
             </div>
 
             <div style={{ marginBottom: '1.25rem' }}>
-              <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
-                Documento Digitalizado / Informe Firmado (PDF/Imagen)
-              </label>
-              <div style={{
-                border: '2px dashed #99f6e4',
-                background: '#f0fdfa',
-                borderRadius: '8px',
-                padding: '0.85rem 1rem',
-                textAlign: 'center',
-                cursor: 'pointer',
-              }}>
-                <UploadCloud size={24} color="#0d9488" style={{ margin: '0 auto' }} />
-                <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#0f766e', marginTop: '0.25rem' }}>
-                  Documento digital generado y vinculado institucionalmente
-                </div>
-                <div style={{ fontSize: '0.7rem', color: '#64748b' }}>
-                  {formResultado.archivo_resultado_url || `/laboratorios/descargas/${estudioSeleccionado.codigo_estudio.toLowerCase()}.pdf`}
-                </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155' }}>
+                  Documento Digitalizado / Informe Firmado (PDF/Imagen) *
+                </label>
+                <span style={{ fontSize: '0.7rem', color: '#0d9488', fontWeight: 600 }}>
+                  Formatos soportados: PDF, JPG, PNG, WEBP (hasta 20MB)
+                </span>
               </div>
+
+              {/* Input oculto para selección de archivos reales */}
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept=".pdf,image/png,image/jpeg,image/webp,application/pdf"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  if (e.target.files && e.target.files[0]) {
+                    procesarArchivoSeleccionado(e.target.files[0]);
+                  }
+                }}
+              />
+
+              {archivoInfo ? (
+                /* ESTADO 1: ARCHIVO SELECCIONADO / LISTO PARA SUBIR */
+                <div style={{
+                  border: '2px solid #0d9488',
+                  background: '#f0fdfa',
+                  borderRadius: '10px',
+                  padding: '0.85rem 1rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '0.75rem',
+                  boxShadow: '0 2px 6px rgba(13, 148, 136, 0.1)',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 }}>
+                    {archivoInfo.preview ? (
+                      <img
+                        src={archivoInfo.preview}
+                        alt="Vista previa"
+                        style={{ width: '48px', height: '48px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #99f6e4' }}
+                      />
+                    ) : (
+                      <div style={{
+                        width: '44px',
+                        height: '44px',
+                        borderRadius: '8px',
+                        background: '#ccfbf1',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#0f766e',
+                        flexShrink: 0,
+                      }}>
+                        <FileText size={24} />
+                      </div>
+                    )}
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '0.84rem', fontWeight: 800, color: '#0f172a', wordBreak: 'break-all' }}>
+                          {archivoInfo.name}
+                        </span>
+                        <span style={{
+                          padding: '1px 6px',
+                          borderRadius: '4px',
+                          fontSize: '0.65rem',
+                          fontWeight: 800,
+                          background: archivoInfo.type === 'PDF' ? '#fee2e2' : '#e0e7ff',
+                          color: archivoInfo.type === 'PDF' ? '#991b1b' : '#3730a3',
+                        }}>
+                          {archivoInfo.type}
+                        </span>
+                        <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                          ({archivoInfo.size})
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '3px', fontSize: '0.74rem', color: '#059669', fontWeight: 700 }}>
+                        <CheckCircle2 size={14} />
+                        Archivo listo para ser cargado y publicado en el portal
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      style={{
+                        padding: '0.4rem 0.75rem',
+                        borderRadius: '6px',
+                        border: '1px solid #99f6e4',
+                        background: '#ffffff',
+                        color: '#0f766e',
+                        fontSize: '0.74rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                      title="Seleccionar otro archivo"
+                    >
+                      Cambiar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleQuitarArchivo}
+                      style={{
+                        padding: '0.4rem 0.6rem',
+                        borderRadius: '6px',
+                        border: '1px solid #fecaca',
+                        background: '#fef2f2',
+                        color: '#dc2626',
+                        fontSize: '0.74rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                      title="Eliminar archivo adjunto"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* ESTADO 2: ZONA INTERACTIVA DRAG & DROP Y BOTÓN EXPLORAR */
+                <div
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setIsDragging(true);
+                  }}
+                  onDragLeave={() => setIsDragging(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setIsDragging(false);
+                    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                      procesarArchivoSeleccionado(e.dataTransfer.files[0]);
+                    }
+                  }}
+                  onClick={() => fileInputRef.current?.click()}
+                  style={{
+                    border: isDragging ? '2px dashed #0d9488' : '2px dashed #99f6e4',
+                    background: isDragging ? '#ccfbf1' : '#f0fdfa',
+                    borderRadius: '10px',
+                    padding: '1.25rem 1rem',
+                    textAlign: 'center',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  <UploadCloud size={32} color="#0d9488" style={{ margin: '0 auto' }} />
+                  <div style={{ fontSize: '0.86rem', fontWeight: 800, color: '#0f766e', marginTop: '0.4rem' }}>
+                    Haga clic aquí o arrastre su archivo PDF o Imagen de laboratorio
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '0.2rem' }}>
+                    Soporta informes escaneados en PDF, imágenes JPG, PNG o capturas del analizador
+                  </div>
+
+                  <div style={{ marginTop: '0.75rem' }}>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        fileInputRef.current?.click();
+                      }}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.45rem',
+                        padding: '0.45rem 1rem',
+                        borderRadius: '7px',
+                        border: '1px solid #0d9488',
+                        background: '#ffffff',
+                        color: '#0d9488',
+                        fontSize: '0.78rem',
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                        boxShadow: '0 1px 3px rgba(13,148,136,0.15)',
+                      }}
+                    >
+                      <FileUp size={15} />
+                      Examinar Archivos en su Computadora
+                    </button>
+                  </div>
+
+                  {formResultado.archivo_resultado_url && (
+                    <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '0.5rem', fontFamily: 'monospace' }}>
+                      Ruta del documento: {formResultado.archivo_resultado_url}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Acciones del Modal */}

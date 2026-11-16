@@ -622,4 +622,40 @@ class ClinicaVidaSaludTest extends TestCase
         ]);
         $reserva2->assertStatus(409);
     }
+
+    /**
+     * TEST 22: Carga y publicación de resultados de laboratorio con archivo adjunto físico (CU17)
+     */
+    public function test_22_subir_resultado_laboratorio_con_archivo_adjunto(): void
+    {
+        Sanctum::actingAs($this->recepcionista);
+
+        $idEstudio = DB::table('laboratorios_estudios')->insertGetId([
+            'codigo_estudio'        => 'LAB-TEST-001',
+            'id_paciente'           => 1,
+            'id_medico_solicitante' => 1,
+            'nombre_estudio'        => 'Examen General de Orina (EGO)',
+            'tipo_estudio'          => 'Laboratorio Clínico',
+            'descripcion'           => 'Orden de prueba automatizada',
+            'fecha_solicitud'       => Carbon::now('America/La_Paz'),
+            'estado'                => 'PENDIENTE',
+        ]);
+
+        $file = \Illuminate\Http\UploadedFile::fake()->create('resultado_orina.pdf', 120, 'application/pdf');
+
+        $response = $this->post("/api/laboratorios/carga/{$idEstudio}/resultado", [
+            'resultado_diagnostico' => 'Densidad 1.020, pH 6.0, Negativo para glucosa',
+            'observaciones'         => 'Muestra procesada en analizador automatizado',
+            'archivo'               => $file,
+            'estado'                => 'COMPLETADO',
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJson(['status' => 'success']);
+
+        $estudio = DB::table('laboratorios_estudios')->where('id_estudio', $idEstudio)->first();
+        $this->assertEquals('PUBLICADO', $estudio->estado);
+        $this->assertNotNull($estudio->archivo_resultado_url);
+        $this->assertStringContainsString('lab-test-001', $estudio->archivo_resultado_url);
+    }
 }

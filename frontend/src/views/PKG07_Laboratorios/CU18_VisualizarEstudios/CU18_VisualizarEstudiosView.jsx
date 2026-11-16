@@ -519,7 +519,32 @@ export const CU18_VisualizarEstudiosView = ({ currentUser = null }) => {
                 Cerrar Visor
               </button>
 
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                {estudioDetalle.archivo_resultado_url && (
+                  <a
+                    href={estudioDetalle.archivo_resultado_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      padding: '0.5rem 1rem',
+                      borderRadius: '8px',
+                      border: '1px solid #0d9488',
+                      background: '#f0fdfa',
+                      color: '#0f766e',
+                      fontWeight: 700,
+                      fontSize: '0.82rem',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.4rem',
+                      textDecoration: 'none',
+                    }}
+                  >
+                    <ExternalLink size={15} />
+                    Ver Adjunto Original
+                  </a>
+                )}
+
                 <button
                   type="button"
                   onClick={descargarPdf}

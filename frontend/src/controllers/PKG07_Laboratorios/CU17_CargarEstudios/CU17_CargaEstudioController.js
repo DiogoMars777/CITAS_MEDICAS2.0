@@ -32,6 +32,8 @@ export const useCU17CargaEstudioController = () => {
     observaciones: '',
     archivo_resultado_url: '',
     archivo_nombre: '',
+    archivo_file: null,
+    archivo_preview: null,
     estado: 'COMPLETADO',
   });
 
@@ -112,6 +114,8 @@ export const useCU17CargaEstudioController = () => {
       observaciones: '',
       archivo_resultado_url: estudio.archivo_resultado_url || '',
       archivo_nombre: estudio.archivo_resultado_url ? 'informe_digital.pdf' : '',
+      archivo_file: null,
+      archivo_preview: null,
       estado: 'COMPLETADO',
     });
     setModalCargaAbierto(true);
@@ -127,8 +131,11 @@ export const useCU17CargaEstudioController = () => {
    */
   const guardarResultado = async () => {
     if (!estudioSeleccionado) return;
-    if (!formResultado.resultado_diagnostico.trim()) {
-      setError('Debe ingresar los resultados analíticos o diagnóstico del examen.');
+    const tieneTexto = formResultado.resultado_diagnostico && formResultado.resultado_diagnostico.trim().length > 0;
+    const tieneArchivo = !!formResultado.archivo_file || !!formResultado.archivo_resultado_url;
+
+    if (!tieneTexto && !tieneArchivo) {
+      setError('Debe ingresar los resultados analíticos o adjuntar un archivo digital (PDF o imagen).');
       return;
     }
 
@@ -137,18 +144,39 @@ export const useCU17CargaEstudioController = () => {
     setMensajeExito(null);
 
     try {
-      const headers = {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      };
       const token = localStorage.getItem('token');
-      if (token) headers['Authorization'] = `Bearer ${token}`;
+      let res;
 
-      const res = await fetch(`${API_BASE}/${estudioSeleccionado.id_estudio}/resultado`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(formResultado),
-      });
+      if (formResultado.archivo_file) {
+        // Enviar vía FormData multipart para subir el archivo físico
+        const formData = new FormData();
+        formData.append('resultado_diagnostico', formResultado.resultado_diagnostico || '');
+        formData.append('observaciones', formResultado.observaciones || '');
+        formData.append('archivo_nombre', formResultado.archivo_nombre || formResultado.archivo_file.name);
+        formData.append('estado', formResultado.estado || 'COMPLETADO');
+        formData.append('archivo', formResultado.archivo_file);
+
+        const formHeaders = { Accept: 'application/json' };
+        if (token) formHeaders['Authorization'] = `Bearer ${token}`;
+
+        res = await fetch(`${API_BASE}/${estudioSeleccionado.id_estudio}/resultado`, {
+          method: 'POST',
+          headers: formHeaders,
+          body: formData,
+        });
+      } else {
+        const headers = {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        res = await fetch(`${API_BASE}/${estudioSeleccionado.id_estudio}/resultado`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(formResultado),
+        });
+      }
 
       const data = await res.json();
       if (!res.ok || data.status !== 'success') {

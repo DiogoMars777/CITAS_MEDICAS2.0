@@ -275,10 +275,12 @@ class CU17_CargaEstudioController extends Controller
     public function guardarResultado(Request $request, $id): JsonResponse
     {
         $validated = $request->validate([
-            'resultado_diagnostico' => 'required|string',
+            'resultado_diagnostico' => 'nullable|string',
             'observaciones'         => 'nullable|string',
             'archivo_resultado_url' => 'nullable|string',
             'archivo_nombre'        => 'nullable|string',
+            'archivo_base64'        => 'nullable|string',
+            'archivo'               => 'nullable|file|max:20480',
             'estado'                => 'nullable|string|in:COMPLETADO,PUBLICADO,EN_PROCESO,PENDIENTE',
         ]);
 
@@ -294,18 +296,71 @@ class CU17_CargaEstudioController extends Controller
             }
 
             $archivoUrl = $validated['archivo_resultado_url'] ?? $estudio->archivo_resultado_url;
+            $nombreArchivoFinal = $validated['archivo_nombre'] ?? null;
+
+            // 1. Si se envió un archivo real mediante FormData (multipart)
+            if ($request->hasFile('archivo')) {
+                $uploadedFile = $request->file('archivo');
+                $extension = strtolower($uploadedFile->getClientOriginalExtension() ?: 'pdf');
+                $nombreOriginal = $uploadedFile->getClientOriginalName();
+                $nombreArchivoFinal = $nombreOriginal;
+                
+                $destinationDir = public_path('uploads/laboratorios');
+                if (!file_exists($destinationDir)) {
+                    @mkdir($destinationDir, 0777, true);
+                }
+                $cleanCode = strtolower(preg_replace('/[^a-zA-Z0-9_\-]/', '_', $estudio->codigo_estudio));
+                $safeFileName = "lab_{$cleanCode}_" . time() . ".{$extension}";
+                $uploadedFile->move($destinationDir, $safeFileName);
+                $archivoUrl = "/uploads/laboratorios/{$safeFileName}";
+            }
+            // 2. Si se envió archivo en Base64 (Data URL)
+            elseif (!empty($request->input('archivo_base64'))) {
+                $base64String = $request->input('archivo_base64');
+                $extension = 'pdf';
+                if (preg_match('/^data:image\/(\w+);base64,/', $base64String, $matches)) {
+                    $extension = strtolower($matches[1]);
+                    $base64String = substr($base64String, strpos($base64String, ',') + 1);
+                } elseif (preg_match('/^data:application\/pdf;base64,/', $base64String)) {
+                    $extension = 'pdf';
+                    $base64String = substr($base64String, strpos($base64String, ',') + 1);
+                }
+                
+                $fileData = base64_decode($base64String);
+                if ($fileData !== false) {
+                    $destinationDir = public_path('uploads/laboratorios');
+                    if (!file_exists($destinationDir)) {
+                        @mkdir($destinationDir, 0777, true);
+                    }
+                    $cleanCode = strtolower(preg_replace('/[^a-zA-Z0-9_\-]/', '_', $estudio->codigo_estudio));
+                    $safeFileName = "lab_{$cleanCode}_" . time() . ".{$extension}";
+                    file_put_contents($destinationDir . DIRECTORY_SEPARATOR . $safeFileName, $fileData);
+                    $archivoUrl = "/uploads/laboratorios/{$safeFileName}";
+                }
+            }
+
             if (!$archivoUrl) {
                 // Simulación o enlace al visor seguro institucional
                 $archivoUrl = '/laboratorios/descargas/' . strtolower($estudio->codigo_estudio) . '.pdf';
             }
 
+            // Si resultado_diagnostico vino vacío o con solo espacios, generar diagnóstico institucional
+            $resultadoDiagnostico = trim($validated['resultado_diagnostico'] ?? '');
+            if (empty($resultadoDiagnostico)) {
+                $docNombre = $nombreArchivoFinal ?: 'informe digitalizado';
+                $resultadoDiagnostico = "ESTUDIO DIGITALIZADO OFICIAL: Se adjunta informe clínico avalado ({$docNombre}). Muestra procesada en analizador automatizado. Los parámetros específicos y curvas analíticas se encuentran en el archivo digital anexo.";
+            }
+
             $observaciones = $validated['observaciones'] ?? '';
             $descripcionActual = $estudio->descripcion ?? '';
+            if ($nombreArchivoFinal && !str_contains($descripcionActual, $nombreArchivoFinal)) {
+                $descripcionActual = $descripcionActual ? "{$descripcionActual} | Adjunto: {$nombreArchivoFinal}" : "Adjunto: {$nombreArchivoFinal}";
+            }
             if ($observaciones && !str_contains($descripcionActual, $observaciones)) {
                 $descripcionActual = $descripcionActual ? "{$descripcionActual} | Obs: {$observaciones}" : "Obs: {$observaciones}";
             }
 
-            $estudio->resultado_diagnostico = $validated['resultado_diagnostico'];
+            $estudio->resultado_diagnostico = $resultadoDiagnostico;
             $estudio->archivo_resultado_url = $archivoUrl;
             $estudio->estado                = $estadoFinal;
             $estudio->descripcion           = $descripcionActual;
