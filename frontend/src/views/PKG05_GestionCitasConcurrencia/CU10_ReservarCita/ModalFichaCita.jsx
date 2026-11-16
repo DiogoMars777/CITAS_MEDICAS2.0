@@ -261,7 +261,7 @@ export const ModalFichaCita = ({
               <span>Imprimir Ficha</span>
             </button>
 
-            {onPagar && (
+            {onPagar && cita?.estado_cita === 'PROGRAMADA' && (
               <button
                 type="button"
                 onClick={() => {
@@ -284,7 +284,7 @@ export const ModalFichaCita = ({
                 }}
               >
                 <CreditCard size={15} />
-                <span>Pagar / Cobrar Cita</span>
+                <span>Pagar Reserva (Plazo 1h)</span>
               </button>
             )}
           </div>

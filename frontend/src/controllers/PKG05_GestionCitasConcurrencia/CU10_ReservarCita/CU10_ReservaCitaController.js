@@ -134,9 +134,15 @@ export const useCU10ReservaCitaController = (currentUser = null) => {
     setSuccessMsg(null);
 
     try {
+      const headers = {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      };
+      if (currentUser?.token) headers['Authorization'] = `Bearer ${currentUser.token}`;
+
       const res = await fetch(API_BASE, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(formData),
       });
 
@@ -188,7 +194,10 @@ export const useCU10ReservaCitaController = (currentUser = null) => {
         throw new Error('Identificador de cita no válido.');
       }
 
-      const res = await fetch(`${API_BASE}/${id}`);
+      const headers = { Accept: 'application/json' };
+      if (currentUser?.token) headers['Authorization'] = `Bearer ${currentUser.token}`;
+
+      const res = await fetch(`${API_BASE}/${id}`, { headers });
       const data = await res.json();
 
       if (!res.ok || !data.success) {
@@ -214,9 +223,15 @@ export const useCU10ReservaCitaController = (currentUser = null) => {
     setActionLoading(true);
     setError(null);
     try {
+      const headers = {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      };
+      if (currentUser?.token) headers['Authorization'] = `Bearer ${currentUser.token}`;
+
       const res = await fetch(`${API_BASE}/${idCita}/estado`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ estado_cita: nuevoEstado }),
       });
 

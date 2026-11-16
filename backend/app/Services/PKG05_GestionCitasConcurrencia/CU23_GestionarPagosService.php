@@ -288,7 +288,7 @@ class CU23_GestionarPagosService
                         ];
                     }
 
-                    $creacion = $cita->created_at ?? $cita->fecha_creacion;
+                    $creacion = $cita->fecha_creacion ?? $cita->created_at;
                     if ($creacion) {
                         $limite = Carbon::parse($creacion)->addMinutes(60);
                         if (Carbon::now($this->timezone)->greaterThan($limite)) {

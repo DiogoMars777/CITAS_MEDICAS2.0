@@ -689,39 +689,53 @@ export const CU10_ReservarCitaView = ({ currentUser = null }) => {
                                   </button>
                                 ) : (
                                   <span style={{ fontSize: '0.72rem', color: '#ef4444', fontWeight: 700, padding: '4px 8px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px' }}>
-                                    ⚠️ Plazo vencido
+                                    ⚠️ Plazo 1h vencido
                                   </span>
                                 );
                               })()
-                            ) : (
+                            ) : cita.estado_cita === 'CONFIRMADA' ? (
                               <span style={{ fontSize: '0.72rem', color: '#059669', fontWeight: 700, padding: '4px 8px', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '6px' }}>
-                                ✓ Pagada
+                                ✓ Pagada y Confirmada
+                              </span>
+                            ) : cita.estado_cita === 'ATENDIDA' ? (
+                              <span style={{ fontSize: '0.72rem', color: '#0284c7', fontWeight: 700, padding: '4px 8px', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '6px' }}>
+                                ✓ Atendida
+                              </span>
+                            ) : cita.estado_cita === 'CANCELADA' ? (
+                              <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600, padding: '4px 8px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
+                                Cancelada
+                              </span>
+                            ) : (
+                              <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600, padding: '4px 8px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
+                                {cita.estado_cita}
                               </span>
                             )
                           ) : (
                             <>
                               {/* Cobrar Cita (Recepción / Admin) */}
-                              <button
-                                type="button"
-                                onClick={() => handleAbrirCobro(cita)}
-                                title="Cobrar / Registrar Pago de la Cita"
-                                style={{
-                                  background: '#f0fdf4',
-                                  border: '1px solid #bbf7d0',
-                                  color: '#15803d',
-                                  padding: '0.4rem 0.65rem',
-                                  borderRadius: '6px',
-                                  cursor: 'pointer',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '4px',
-                                  fontSize: '0.74rem',
-                                  fontWeight: 700,
-                                }}
-                              >
-                                <CreditCard size={13} />
-                                <span>Cobrar</span>
-                              </button>
+                              {cita.estado_cita === 'PROGRAMADA' && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleAbrirCobro(cita)}
+                                  title="Cobrar / Registrar Pago de la Cita"
+                                  style={{
+                                    background: '#f0fdf4',
+                                    border: '1px solid #bbf7d0',
+                                    color: '#15803d',
+                                    padding: '0.4rem 0.65rem',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    fontSize: '0.74rem',
+                                    fontWeight: 700,
+                                  }}
+                                >
+                                  <CreditCard size={13} />
+                                  <span>Cobrar</span>
+                                </button>
+                              )}
 
                               {/* Confirmar Asistencia si está PROGRAMADA */}
                               {cita.estado_cita === 'PROGRAMADA' && (
@@ -747,6 +761,22 @@ export const CU10_ReservarCitaView = ({ currentUser = null }) => {
                                   <Check size={13} />
                                   <span>Confirmar</span>
                                 </button>
+                              )}
+
+                              {cita.estado_cita === 'CONFIRMADA' && (
+                                <span style={{ fontSize: '0.72rem', color: '#059669', fontWeight: 700, padding: '4px 8px', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '6px' }}>
+                                  ✓ Pagada
+                                </span>
+                              )}
+                              {cita.estado_cita === 'ATENDIDA' && (
+                                <span style={{ fontSize: '0.72rem', color: '#0284c7', fontWeight: 700, padding: '4px 8px', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '6px' }}>
+                                  ✓ Atendida
+                                </span>
+                              )}
+                              {cita.estado_cita === 'CANCELADA' && (
+                                <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600, padding: '4px 8px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
+                                  Cancelada
+                                </span>
                               )}
                             </>
                           )}
@@ -845,6 +875,7 @@ export const CU10_ReservarCitaView = ({ currentUser = null }) => {
         isOpen={modalPagoOpen}
         onClose={() => setModalPagoOpen(false)}
         cita={citaParaPago}
+        currentUser={currentUser}
         onConfirmarPago={handleConfirmarPagoDirecto}
         loading={pagoLoading}
       />
