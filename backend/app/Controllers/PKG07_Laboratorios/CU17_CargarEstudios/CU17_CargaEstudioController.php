@@ -11,6 +11,8 @@ use App\Models\PKG07_Laboratorios\CU17_CargarEstudios\LaboratorioEstudioCarga;
 use App\Models\PKG03_PacientesHistorial\CU06_RegistroPaciente\Paciente;
 use App\Models\PKG02_MedicosEspecialidades\CU05_GestionMedicos\Medico;
 use App\Models\PKG08_DashboardReportes\CU19_Recordatorios\Recordatorio;
+use App\Models\PKG01_Seguridad\CU02_BitacoraAuditoria\BitacoraAuditoria;
+use Illuminate\Support\Facades\Log;
 
 class CU17_CargaEstudioController extends Controller
 {
@@ -234,18 +236,22 @@ class CU17_CargaEstudioController extends Controller
                 'estado'                => 'PENDIENTE',
             ]);
 
-            // Auditoría
-            DB::table('bitacora_auditoria')->insert([
-                'id_usuario'       => auth()->id() ?? 1,
-                'accion'           => 'INSERT',
-                'modulo'           => 'LABORATORIOS_CU17',
-                'descripcion'      => "Se generó la orden de laboratorio {$codigo} para paciente ID {$validated['id_paciente']}.",
-                'valores_antiguos' => null,
-                'valores_nuevos'   => json_encode($estudio->toArray()),
-                'ip_usuario'       => $request->ip() ?? '127.0.0.1',
-                'user_agent'       => $request->userAgent() ?? 'Sistema Web',
-                'fecha_hora'       => Carbon::now('America/La_Paz'),
-            ]);
+            // Auditoría segura
+            try {
+                BitacoraAuditoria::registrar(
+                    'PKG07_Laboratorios',
+                    'laboratorio_estudios',
+                    $estudio->id_estudio,
+                    'INSERT',
+                    null,
+                    $estudio->toArray(),
+                    $request->user()?->id_usuario ?? auth()->id() ?? 1,
+                    $request->ip() ?? '127.0.0.1',
+                    $request->userAgent() ?? 'Sistema Web'
+                );
+            } catch (\Throwable $ae) {
+                Log::warning('Bitacora lab store error: ' . $ae->getMessage());
+            }
 
             DB::commit();
 
@@ -308,29 +314,37 @@ class CU17_CargaEstudioController extends Controller
 
             // Notificación al Paciente (CU19)
             if ($estudio->paciente && $estudio->id_cita) {
-                Recordatorio::create([
-                    'id_cita'          => $estudio->id_cita,
-                    'tipo_canal'       => 'WHATSAPP',
-                    'fecha_programada' => Carbon::now('America/La_Paz'),
-                    'fecha_envio'      => Carbon::now('America/La_Paz'),
-                    'estado_envio'     => 'ENVIADO',
-                    'intentos'         => 1,
-                    'mensaje'          => "Estimado(a) {$estudio->paciente->nombres}: Su resultado de laboratorio '{$estudio->nombre_estudio}' ya se encuentra completado y disponible en el portal web de Clínica Vida Salud.",
-                ]);
+                try {
+                    Recordatorio::create([
+                        'id_cita'          => $estudio->id_cita,
+                        'tipo_canal'       => 'WHATSAPP',
+                        'fecha_programada' => Carbon::now('America/La_Paz'),
+                        'fecha_envio'      => Carbon::now('America/La_Paz'),
+                        'estado_envio'     => 'ENVIADO',
+                        'intentos'         => 1,
+                        'mensaje'          => "Estimado(a) {$estudio->paciente->nombres}: Su resultado de laboratorio '{$estudio->nombre_estudio}' ya se encuentra completado y disponible en el portal web de Clínica Vida Salud.",
+                    ]);
+                } catch (\Throwable $te) {
+                    Log::warning('Recordatorio lab error: ' . $te->getMessage());
+                }
             }
 
-            // Auditoría
-            DB::table('bitacora_auditoria')->insert([
-                'id_usuario'       => auth()->id() ?? 1,
-                'accion'           => 'UPDATE',
-                'modulo'           => 'LABORATORIOS_CU17',
-                'descripcion'      => "Carga de resultados y digitalización del estudio {$estudio->codigo_estudio} para {$estudio->paciente->nombres} {$estudio->paciente->apellidos}.",
-                'valores_antiguos' => json_encode($valoresAntiguos),
-                'valores_nuevos'   => json_encode($estudio->fresh()->toArray()),
-                'ip_usuario'       => $request->ip() ?? '127.0.0.1',
-                'user_agent'       => $request->userAgent() ?? 'Sistema Web',
-                'fecha_hora'       => Carbon::now('America/La_Paz'),
-            ]);
+            // Auditoría segura
+            try {
+                BitacoraAuditoria::registrar(
+                    'PKG07_Laboratorios',
+                    'laboratorio_estudios',
+                    $estudio->id_estudio,
+                    'UPDATE',
+                    $valoresAntiguos,
+                    $estudio->fresh()->toArray(),
+                    $request->user()?->id_usuario ?? auth()->id() ?? 1,
+                    $request->ip() ?? '127.0.0.1',
+                    $request->userAgent() ?? 'Sistema Web'
+                );
+            } catch (\Throwable $ae) {
+                Log::warning('Bitacora lab update error: ' . $ae->getMessage());
+            }
 
             DB::commit();
 

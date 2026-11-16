@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   FlaskConical,
   Search,
@@ -20,8 +20,16 @@ import {
   Layers,
   ChevronRight,
   X,
+  Sparkles,
+  Zap,
+  Sliders,
+  Check,
 } from 'lucide-react';
 import { useCU17CargaEstudioController } from '../../../controllers/PKG07_Laboratorios/CU17_CargarEstudios/CU17_CargaEstudioController';
+import {
+  PLANTILLAS_LABORATORIO,
+  detectarPlantillaEstudio,
+} from '../../../models/PKG07_Laboratorios/CU17_CargarEstudios/CargaEstudioModel';
 
 export const CU17_CargarEstudiosView = ({ onNavigateToCU18 }) => {
   const {
@@ -55,6 +63,71 @@ export const CU17_CargarEstudiosView = ({ onNavigateToCU18 }) => {
   } = useCU17CargaEstudioController();
 
   const [inputBusquedaCI, setInputBusquedaCI] = useState('');
+  const [plantillaSeleccionadaKey, setPlantillaSeleccionadaKey] = useState(null);
+  const [valoresParametros, setValoresParametros] = useState({});
+  const [modoEntrada, setModoEntrada] = useState('GUIADO'); // 'GUIADO' | 'TEXTO'
+
+  // Al abrir el modal o cambiar de estudio, detectar la plantilla clínica y preparar parámetros
+  useEffect(() => {
+    if (modalCargaAbierto && estudioSeleccionado) {
+      const pl = detectarPlantillaEstudio(estudioSeleccionado.nombre_estudio);
+      setPlantillaSeleccionadaKey(pl.id);
+      setValoresParametros({});
+      setModoEntrada('GUIADO');
+    }
+  }, [modalCargaAbierto, estudioSeleccionado]);
+
+  const plantillaActiva =
+    (plantillaSeleccionadaKey && PLANTILLAS_LABORATORIO[plantillaSeleccionadaKey]) ||
+    (estudioSeleccionado ? detectarPlantillaEstudio(estudioSeleccionado.nombre_estudio) : null);
+
+  const sincronizarTextoConParametros = (valores, plantilla) => {
+    if (!plantilla || !plantilla.parametros) return;
+    const lineas = [
+      `ESTUDIO: ${plantilla.nombre.toUpperCase()}`,
+      `FECHA DE PROCESAMIENTO: ${new Date().toLocaleDateString('es-ES')}`,
+      '----------------------------------------------------------',
+      'PARÁMETRO                       RESULTADO    VALOR REFERENCIAL',
+      '----------------------------------------------------------',
+    ];
+    plantilla.parametros.forEach((p) => {
+      const val = valores[p.id] !== undefined ? valores[p.id] : '';
+      if (val !== '') {
+        const nombrePad = p.nombre.padEnd(30, ' ');
+        const resUnidad = `${val} ${p.unidad || ''}`.trim().padEnd(12, ' ');
+        lineas.push(`${nombrePad} : ${resUnidad} [${p.ref}]`);
+      }
+    });
+    lineas.push('----------------------------------------------------------');
+    lineas.push('CONCLUSIÓN TÉCNICA: Muestra procesada y validada en analizador automatizado clínico.');
+    setFormResultado((prev) => ({
+      ...prev,
+      resultado_diagnostico: lineas.join('\n'),
+    }));
+  };
+
+  const handleAutocompletarNormales = () => {
+    if (!plantillaActiva) return;
+    const nuevosValores = {};
+    plantillaActiva.parametros.forEach((p) => {
+      nuevosValores[p.id] = p.normal;
+    });
+    setValoresParametros(nuevosValores);
+    sincronizarTextoConParametros(nuevosValores, plantillaActiva);
+  };
+
+  const handleCambioParametro = (paramId, valor) => {
+    const nuevosValores = { ...valoresParametros, [paramId]: valor };
+    setValoresParametros(nuevosValores);
+    sincronizarTextoConParametros(nuevosValores, plantillaActiva);
+  };
+
+  const handleCambioPlantilla = (nuevaKey) => {
+    setPlantillaSeleccionadaKey(nuevaKey);
+    const nuevaPl = PLANTILLAS_LABORATORIO[nuevaKey] || detectarPlantillaEstudio(estudioSeleccionado?.nombre_estudio);
+    setValoresParametros({});
+    sincronizarTextoConParametros({}, nuevaPl);
+  };
 
   const handleBuscar = (e) => {
     e.preventDefault();
@@ -479,8 +552,8 @@ export const CU17_CargarEstudiosView = ({ onNavigateToCU18 }) => {
         <div style={{
           position: 'fixed',
           inset: 0,
-          background: 'rgba(15, 23, 42, 0.6)',
-          backdropFilter: 'blur(3px)',
+          background: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'blur(4px)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -489,40 +562,318 @@ export const CU17_CargarEstudiosView = ({ onNavigateToCU18 }) => {
         }}>
           <div style={{
             background: '#ffffff',
-            borderRadius: '14px',
+            borderRadius: '16px',
             width: '100%',
-            maxWidth: '650px',
-            maxHeight: '90vh',
+            maxWidth: '780px',
+            maxHeight: '92vh',
             overflowY: 'auto',
             padding: '1.5rem',
-            boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
+            boxShadow: '0 20px 45px rgba(0,0,0,0.25)',
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <FlaskConical size={20} color="#0d9488" />
-                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#0f172a' }}>
-                  Cargar Resultado Clínico: {estudioSeleccionado.codigo_estudio}
-                </h3>
+            {/* Cabecera del Modal */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem', paddingBottom: '0.85rem', borderBottom: '1px solid #f1f5f9' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                <div style={{
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '10px',
+                  background: 'linear-gradient(135deg, #0d9488 0%, #0f766e 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#ffffff',
+                  boxShadow: '0 4px 10px rgba(13, 148, 136, 0.25)',
+                }}>
+                  <FlaskConical size={20} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>
+                    Cargar Resultado Clínico: {estudioSeleccionado.codigo_estudio}
+                  </h3>
+                  <p style={{ margin: 0, fontSize: '0.74rem', color: '#64748b' }}>
+                    Actor: Recepcionista / Analista de Laboratorio — Asistente de Carga Rápida
+                  </p>
+                </div>
               </div>
-              <button onClick={cerrarModalCarga} style={{ background: 'none', border: 'none', fontSize: '1.1rem', cursor: 'pointer', color: '#64748b' }}>✕</button>
+              <button
+                onClick={cerrarModalCarga}
+                style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', color: '#64748b', padding: '0.25rem 0.5rem', borderRadius: '6px' }}
+              >
+                ✕
+              </button>
             </div>
 
-            <div style={{ background: '#f8fafc', padding: '0.75rem', borderRadius: '8px', marginBottom: '1rem', fontSize: '0.78rem' }}>
-              <div><strong>Paciente:</strong> {estudioSeleccionado.paciente_nombre} (CI: {estudioSeleccionado.paciente_ci})</div>
-              <div><strong>Edad:</strong> {estudioSeleccionado.paciente_edad} años ({estudioSeleccionado.grupo_etario})</div>
-              <div><strong>Estudio:</strong> {estudioSeleccionado.nombre_estudio}</div>
+            {/* Ficha Resumida del Paciente y Estudio */}
+            <div style={{
+              background: '#f8fafc',
+              padding: '0.75rem 1rem',
+              borderRadius: '10px',
+              marginBottom: '1rem',
+              border: '1px solid #e2e8f0',
+              display: 'flex',
+              flexWrap: 'wrap',
+              justifyContent: 'space-between',
+              gap: '0.5rem',
+              fontSize: '0.8rem',
+            }}>
+              <div>
+                <span style={{ color: '#64748b' }}>Paciente:</span>{' '}
+                <strong style={{ color: '#0f172a' }}>{estudioSeleccionado.paciente_nombre}</strong>{' '}
+                <span style={{ color: '#0d9488', fontWeight: 700 }}>(CI: {estudioSeleccionado.paciente_ci})</span>
+              </div>
+              <div>
+                <span style={{ color: '#64748b' }}>Edad:</span>{' '}
+                <strong>{estudioSeleccionado.paciente_edad} años</strong> ({estudioSeleccionado.grupo_etario})
+              </div>
+              <div style={{ width: '100%', borderTop: '1px solid #edf2f7', paddingTop: '0.35rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <span style={{ color: '#64748b' }}>Examen Solicitado:</span>{' '}
+                  <strong style={{ color: '#0f766e', fontSize: '0.85rem' }}>{estudioSeleccionado.nombre_estudio}</strong>
+                </div>
+                <span style={{
+                  padding: '0.2rem 0.55rem',
+                  borderRadius: '12px',
+                  fontSize: '0.7rem',
+                  fontWeight: 800,
+                  background: estudioSeleccionado.estado === 'PENDIENTE' ? '#fef3c7' : '#ccfbf1',
+                  color: estudioSeleccionado.estado === 'PENDIENTE' ? '#92400e' : '#0f766e',
+                }}>
+                  {estudioSeleccionado.estado}
+                </span>
+              </div>
             </div>
 
+            {/* ASISTENTE CLÍNICO DE AUTOCOMPLETADO */}
+            <div style={{
+              background: 'linear-gradient(135deg, #f0fdfa 0%, #e6fffa 100%)',
+              border: '1px solid #99f6e4',
+              borderRadius: '12px',
+              padding: '0.85rem 1rem',
+              marginBottom: '1rem',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '0.65rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Sparkles size={18} color="#0d9488" />
+                  <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#0f766e' }}>
+                    Plantilla de Laboratorio:
+                  </span>
+                  <select
+                    value={plantillaActiva?.id || ''}
+                    onChange={(e) => handleCambioPlantilla(e.target.value)}
+                    style={{
+                      padding: '0.35rem 0.65rem',
+                      borderRadius: '8px',
+                      border: '1px solid #5eead4',
+                      background: '#ffffff',
+                      fontSize: '0.8rem',
+                      fontWeight: 700,
+                      color: '#134e4a',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {Object.values(PLANTILLAS_LABORATORIO).map((pl) => (
+                      <option key={pl.id} value={pl.id}>
+                        {pl.nombre}
+                      </option>
+                    ))}
+                    <option value="GENERICA">Estudio General / Libre</option>
+                  </select>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleAutocompletarNormales}
+                  style={{
+                    background: '#0d9488',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '0.45rem 0.95rem',
+                    fontSize: '0.8rem',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.4rem',
+                    boxShadow: '0 2px 6px rgba(13, 148, 136, 0.3)',
+                    transition: 'all 0.15s ease',
+                  }}
+                  title="Llena los parámetros con los valores normales de referencia para agilizar la carga"
+                >
+                  <Zap size={15} />
+                  ⚡ Autocompletar Valores Normales
+                </button>
+              </div>
+
+              {/* TABS DE MODO DE ENTRADA */}
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setModoEntrada('GUIADO')}
+                  style={{
+                    padding: '0.35rem 0.85rem',
+                    borderRadius: '7px',
+                    border: modoEntrada === 'GUIADO' ? '2px solid #0d9488' : '1px solid #cbd5e1',
+                    background: modoEntrada === 'GUIADO' ? '#ffffff' : 'rgba(255,255,255,0.6)',
+                    color: modoEntrada === 'GUIADO' ? '#0f766e' : '#64748b',
+                    fontWeight: 800,
+                    fontSize: '0.76rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.4rem',
+                  }}
+                >
+                  <Sliders size={14} />
+                  Ingreso Guiado por Parámetros ({plantillaActiva?.parametros?.length || 0})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setModoEntrada('TEXTO')}
+                  style={{
+                    padding: '0.35rem 0.85rem',
+                    borderRadius: '7px',
+                    border: modoEntrada === 'TEXTO' ? '2px solid #0d9488' : '1px solid #cbd5e1',
+                    background: modoEntrada === 'TEXTO' ? '#ffffff' : 'rgba(255,255,255,0.6)',
+                    color: modoEntrada === 'TEXTO' ? '#0f766e' : '#64748b',
+                    fontWeight: 800,
+                    fontSize: '0.76rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.4rem',
+                  }}
+                >
+                  <FileText size={14} />
+                  Editor de Texto Directo
+                </button>
+              </div>
+            </div>
+
+            {/* GRILLA DE PARÁMETROS NUMÉRICOS (CUANDO MODO GUIADO) */}
+            {modoEntrada === 'GUIADO' && plantillaActiva && plantillaActiva.parametros && (
+              <div style={{ marginBottom: '1rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.45rem' }}>
+                  <span style={{ fontSize: '0.76rem', color: '#475569', fontWeight: 700 }}>
+                    Parámetros analíticos del estudio: Ingrese los números de los resultados obtenidos
+                  </span>
+                  <span style={{ fontSize: '0.72rem', color: '#0d9488', fontWeight: 600 }}>
+                    {Object.keys(valoresParametros).filter((k) => valoresParametros[k] !== '').length} de {plantillaActiva.parametros.length} completados
+                  </span>
+                </div>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+                  gap: '0.6rem',
+                  maxHeight: '260px',
+                  overflowY: 'auto',
+                  padding: '0.5rem',
+                  background: '#f8fafc',
+                  borderRadius: '10px',
+                  border: '1px solid #e2e8f0',
+                }}>
+                  {plantillaActiva.parametros.map((param) => {
+                    const valorActual = valoresParametros[param.id] !== undefined ? valoresParametros[param.id] : '';
+                    return (
+                      <div
+                        key={param.id}
+                        style={{
+                          background: '#ffffff',
+                          padding: '0.55rem 0.75rem',
+                          borderRadius: '8px',
+                          border: valorActual ? '1px solid #0d9488' : '1px solid #e2e8f0',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '0.5rem',
+                          boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+                        }}
+                      >
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {param.nombre}
+                          </div>
+                          <div style={{ fontSize: '0.68rem', color: '#64748b' }}>
+                            Ref: {param.ref}
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                          <input
+                            type="text"
+                            value={valorActual}
+                            onChange={(e) => handleCambioParametro(param.id, e.target.value)}
+                            placeholder={param.normal || 'Valor'}
+                            style={{
+                              width: '85px',
+                              padding: '0.35rem 0.5rem',
+                              borderRadius: '6px',
+                              border: '1px solid #cbd5e1',
+                              fontSize: '0.8rem',
+                              fontWeight: 700,
+                              textAlign: 'right',
+                              color: '#0f172a',
+                              background: '#fdfefe',
+                            }}
+                          />
+                          {param.unidad && (
+                            <span style={{ fontSize: '0.7rem', color: '#64748b', minWidth: '38px' }}>
+                              {param.unidad}
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleCambioParametro(param.id, param.normal)}
+                            style={{
+                              border: '1px solid #cbd5e1',
+                              background: '#f1f5f9',
+                              borderRadius: '5px',
+                              padding: '0.25rem 0.45rem',
+                              fontSize: '0.68rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              color: '#475569',
+                            }}
+                            title={`Insertar valor normal (${param.normal})`}
+                          >
+                            Norm
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* ÁREA DE TEXTO / VISTA PREVIA DEL INFORME DIAGNÓSTICO */}
             <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
-                Valores Obtenidos y Diagnóstico del Laboratorio *
-              </label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155' }}>
+                  {modoEntrada === 'GUIADO' ? 'Vista Previa del Informe Estructurado *' : 'Valores Obtenidos y Diagnóstico del Laboratorio *'}
+                </label>
+                {modoEntrada === 'GUIADO' && (
+                  <span style={{ fontSize: '0.7rem', color: '#0d9488', fontWeight: 600 }}>
+                    Se actualiza en tiempo real al ingresar los parámetros numéricos
+                  </span>
+                )}
+              </div>
               <textarea
-                rows={4}
+                rows={modoEntrada === 'GUIADO' ? 5 : 7}
                 value={formResultado.resultado_diagnostico}
                 onChange={(e) => setFormResultado((prev) => ({ ...prev, resultado_diagnostico: e.target.value }))}
                 placeholder="Ej. Glucosa basal: 88 mg/dL (Normal). Colesterol: 175 mg/dL. Triglicéridos: 130 mg/dL..."
-                style={{ width: '100%', padding: '0.55rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.82rem', boxSizing: 'border-box', fontFamily: 'monospace' }}
+                style={{
+                  width: '100%',
+                  padding: '0.6rem',
+                  borderRadius: '8px',
+                  border: '1px solid #cbd5e1',
+                  fontSize: '0.8rem',
+                  boxSizing: 'border-box',
+                  fontFamily: 'monospace',
+                  background: modoEntrada === 'GUIADO' ? '#fdfefe' : '#ffffff',
+                  lineHeight: '1.45',
+                }}
               />
             </div>
 
@@ -534,8 +885,8 @@ export const CU17_CargarEstudiosView = ({ onNavigateToCU18 }) => {
                 type="text"
                 value={formResultado.observaciones}
                 onChange={(e) => setFormResultado((prev) => ({ ...prev, observaciones: e.target.value }))}
-                placeholder="Muestra procesada en analizador automatizado. Sin interferencias de hemólisis."
-                style={{ width: '100%', padding: '0.5rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.82rem', boxSizing: 'border-box' }}
+                placeholder="Muestra procesada en analizador automatizado. Sin interferencias de hemólisis ni lipemia."
+                style={{ width: '100%', padding: '0.55rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.82rem', boxSizing: 'border-box' }}
               />
             </div>
 
@@ -547,11 +898,11 @@ export const CU17_CargarEstudiosView = ({ onNavigateToCU18 }) => {
                 border: '2px dashed #99f6e4',
                 background: '#f0fdfa',
                 borderRadius: '8px',
-                padding: '1rem',
+                padding: '0.85rem 1rem',
                 textAlign: 'center',
                 cursor: 'pointer',
               }}>
-                <UploadCloud size={24} color="#0d9488" />
+                <UploadCloud size={24} color="#0d9488" style={{ margin: '0 auto' }} />
                 <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#0f766e', marginTop: '0.25rem' }}>
                   Documento digital generado y vinculado institucionalmente
                 </div>
@@ -561,11 +912,12 @@ export const CU17_CargarEstudiosView = ({ onNavigateToCU18 }) => {
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+            {/* Acciones del Modal */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.6rem' }}>
               <button
                 type="button"
                 onClick={cerrarModalCarga}
-                style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#ffffff', fontSize: '0.82rem', cursor: 'pointer' }}
+                style={{ padding: '0.55rem 1.15rem', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#ffffff', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', color: '#475569' }}
               >
                 Cancelar
               </button>
@@ -574,17 +926,22 @@ export const CU17_CargarEstudiosView = ({ onNavigateToCU18 }) => {
                 disabled={guardando}
                 onClick={guardarResultado}
                 style={{
-                  padding: '0.5rem 1.25rem',
+                  padding: '0.55rem 1.35rem',
                   borderRadius: '8px',
                   border: 'none',
                   background: '#0d9488',
                   color: '#ffffff',
-                  fontWeight: 700,
+                  fontWeight: 800,
                   fontSize: '0.82rem',
                   cursor: guardando ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.45rem',
+                  boxShadow: '0 2px 8px rgba(13, 148, 136, 0.3)',
                 }}
               >
-                {guardando ? 'Guardando...' : 'Completar y Habilitar en Línea'}
+                <CheckCircle2 size={16} />
+                {guardando ? 'Guardando y Publicando...' : 'Completar y Habilitar en Línea'}
               </button>
             </div>
           </div>

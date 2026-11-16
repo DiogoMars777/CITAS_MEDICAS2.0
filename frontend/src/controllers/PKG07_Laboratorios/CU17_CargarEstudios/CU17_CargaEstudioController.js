@@ -137,12 +137,16 @@ export const useCU17CargaEstudioController = () => {
     setMensajeExito(null);
 
     try {
+      const headers = {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      };
+      const token = localStorage.getItem('token');
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const res = await fetch(`${API_BASE}/${estudioSeleccionado.id_estudio}/resultado`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
+        headers,
         body: JSON.stringify(formResultado),
       });
 
@@ -173,12 +177,16 @@ export const useCU17CargaEstudioController = () => {
     setGuardando(true);
     setError(null);
     try {
+      const headers = {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      };
+      const token = localStorage.getItem('token');
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const res = await fetch(API_BASE, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
+        headers,
         body: JSON.stringify(formNuevaOrden),
       });
 
