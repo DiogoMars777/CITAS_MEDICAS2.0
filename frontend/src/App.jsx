@@ -42,6 +42,7 @@ function App() {
       console.warn('Logout error:', e);
     } finally {
       localStorage.removeItem('clinica_user');
+      localStorage.removeItem('token');
       setCurrentUser(null);
     }
   }, []);
@@ -117,6 +118,9 @@ function App() {
   const handleLoginSuccess = (userData) => {
     setCurrentUser(userData);
     localStorage.setItem('clinica_user', JSON.stringify(userData));
+    if (userData?.token) {
+      localStorage.setItem('token', userData.token);
+    }
   };
 
   if (isValidatingSession && currentUser?.token) {

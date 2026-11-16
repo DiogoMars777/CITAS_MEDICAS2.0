@@ -116,6 +116,9 @@ export const useCU01AutenticacionController = () => {
       const userData = { ...data.user, token: data.token };
       setCurrentUser(userData);
       localStorage.setItem('clinica_user', JSON.stringify(userData));
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+      }
       setSuccessMsg(data.message || 'Inicio de sesión exitoso.');
       setAttemptsLeft(null);
       return { success: true, user: userData };
@@ -254,6 +257,7 @@ export const useCU01AutenticacionController = () => {
     } finally {
       setCurrentUser(null);
       localStorage.removeItem('clinica_user');
+      localStorage.removeItem('token');
       setSuccessMsg('Has cerrado sesión de forma segura.');
     }
   };

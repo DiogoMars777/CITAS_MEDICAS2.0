@@ -6,11 +6,12 @@
 
 const getApiBaseUrl = () => {
   const envUrl = import.meta.env.VITE_API_URL;
-  if (!envUrl) {
-    return 'http://localhost:8000/api';
+  if (envUrl && envUrl.trim() !== '') {
+    const clean = envUrl.trim().replace(/\/+$/, '');
+    return clean.endsWith('/api') ? clean : `${clean}/api`;
   }
-  const clean = envUrl.trim().replace(/\/+$/, '');
-  return clean.endsWith('/api') ? clean : `${clean}/api`;
+  // Dominio de Producción en Railway con base de datos PostgreSQL Supabase
+  return 'https://citasmedicas20-production.up.railway.app/api';
 };
 
 export const API_BASE_URL = getApiBaseUrl();
