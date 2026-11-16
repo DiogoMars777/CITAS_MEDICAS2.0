@@ -19,6 +19,16 @@ import {
   Stethoscope,
   TrendingUp,
   Percent,
+  Mic,
+  MicOff,
+  Volume2,
+  VolumeX,
+  Sparkles,
+  Lightbulb,
+  Send,
+  ChevronDown,
+  ChevronUp,
+  Square,
 } from 'lucide-react';
 import useCU21ReportesController from '../../../controllers/PKG08_DashboardReportes/CU21_Reportes/CU21_ReportesController';
 
@@ -48,7 +58,31 @@ export const CU21_ReportesView = () => {
     modalImpresionAbierto,
     setModalImpresionAbierto,
     abrirVistaImpresion,
+    // Comandos de Voz y Sugerencias
+    isListening,
+    isSpeaking,
+    voiceMuted,
+    setVoiceMuted,
+    voiceTranscript,
+    setVoiceTranscript,
+    voiceFeedback,
+    setVoiceFeedback,
+    sugerenciasAbiertas,
+    setSugerenciasAbiertas,
+    sugerenciasVoz,
+    iniciarEscuchaVoz,
+    detenerEscuchaVoz,
+    procesarComandoVoz,
+    detenerAudio,
   } = useCU21ReportesController();
+
+  const [textoComando, setTextoComando] = React.useState('');
+
+  React.useEffect(() => {
+    if (voiceTranscript) {
+      setTextoComando(voiceTranscript);
+    }
+  }, [voiceTranscript]);
 
   return (
     <div style={{ padding: '0.5rem 1rem 3rem', maxWidth: '1440px', margin: '0 auto', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
@@ -192,6 +226,400 @@ export const CU21_ReportesView = () => {
             <span>Imprimir / PDF Formal</span>
           </button>
         </div>
+      </div>
+
+      {/* =========================================================================
+          BARRA DE CONTROL POR VOZ Y ASISTENTE IA DE REPORTES (CU21)
+      ========================================================================= */}
+      <style>{`
+        @keyframes pulseMic {
+          0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+          70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        @keyframes soundWave {
+          0%, 100% { height: 4px; }
+          50% { height: 16px; }
+        }
+      `}</style>
+      
+      <div style={{
+        background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+        color: '#f8fafc',
+        borderRadius: '14px',
+        padding: '1.15rem 1.35rem',
+        marginBottom: '1.25rem',
+        boxShadow: '0 4px 15px rgba(15, 23, 42, 0.12)',
+        border: '1px solid #334155',
+      }}>
+        {/* Encabezado del Asistente */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '0.75rem',
+          marginBottom: '0.85rem',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <div style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '8px',
+              background: 'linear-gradient(135deg, #38bdf8 0%, #0284c7 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#ffffff',
+            }}>
+              <Sparkles size={17} />
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 800, letterSpacing: '0.03em', color: '#ffffff' }}>
+                  Comandos de Voz & Asistente Clínico Inteligente
+                </span>
+                <span style={{
+                  background: 'rgba(56, 189, 248, 0.15)',
+                  color: '#38bdf8',
+                  border: '1px solid rgba(56, 189, 248, 0.3)',
+                  fontSize: '0.62rem',
+                  fontWeight: 800,
+                  padding: '1px 6px',
+                  borderRadius: '9999px',
+                  fontFamily: 'monospace',
+                }}>
+                  NLP v2.0
+                </span>
+              </div>
+              <p style={{ margin: 0, fontSize: '0.72rem', color: '#94a3b8' }}>
+                Dicta o escribe qué reporte consultar, filtros de médicos, exportaciones o solicita un resumen ejecutivo narrado por voz.
+              </p>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            {/* Indicador de habla / detención de síntesis */}
+            {isSpeaking && (
+              <button
+                type="button"
+                onClick={detenerAudio}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  background: 'rgba(239, 68, 68, 0.2)',
+                  color: '#f87171',
+                  border: '1px solid rgba(239, 68, 68, 0.4)',
+                  fontSize: '0.7rem',
+                  fontWeight: 700,
+                  padding: '0.3rem 0.65rem',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                }}
+                title="Detener voz que está hablando"
+              >
+                <Square size={12} fill="#f87171" />
+                <span>Detener Audio</span>
+              </button>
+            )}
+
+            {/* Toggle Mute Síntesis */}
+            <button
+              type="button"
+              onClick={() => setVoiceMuted(!voiceMuted)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                background: voiceMuted ? 'rgba(100, 116, 139, 0.2)' : 'rgba(56, 189, 248, 0.15)',
+                color: voiceMuted ? '#94a3b8' : '#38bdf8',
+                border: '1px solid',
+                borderColor: voiceMuted ? '#475569' : 'rgba(56, 189, 248, 0.3)',
+                fontSize: '0.7rem',
+                fontWeight: 700,
+                padding: '0.3rem 0.65rem',
+                borderRadius: '6px',
+                cursor: 'pointer',
+              }}
+              title={voiceMuted ? 'Activar respuesta por voz' : 'Silenciar respuesta por voz'}
+            >
+              {voiceMuted ? <VolumeX size={14} /> : <Volume2 size={14} />}
+              <span>{voiceMuted ? 'Voz Desactivada' : 'Voz Activada'}</span>
+            </button>
+
+            {/* Botón Sugerencias */}
+            <button
+              type="button"
+              onClick={() => setSugerenciasAbiertas(!sugerenciasAbiertas)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                background: sugerenciasAbiertas ? '#f59e0b' : 'rgba(245, 158, 11, 0.15)',
+                color: sugerenciasAbiertas ? '#0f172a' : '#fbbf24',
+                border: '1px solid rgba(245, 158, 11, 0.4)',
+                fontSize: '0.7rem',
+                fontWeight: 800,
+                padding: '0.3rem 0.65rem',
+                borderRadius: '6px',
+                cursor: 'pointer',
+              }}
+            >
+              <Lightbulb size={14} />
+              <span>Sugerencias de qué pedir</span>
+              {sugerenciasAbiertas ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+            </button>
+          </div>
+        </div>
+
+        {/* Input & Botón de Micrófono Principal */}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (textoComando.trim()) {
+              procesarComandoVoz(textoComando.trim());
+              setTextoComando('');
+            }
+          }}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.65rem',
+            background: '#0b1120',
+            padding: '0.45rem 0.65rem',
+            borderRadius: '10px',
+            border: isListening ? '1px solid #ef4444' : '1px solid #334155',
+          }}
+        >
+          {/* Botón Micrófono */}
+          <button
+            type="button"
+            onClick={isListening ? detenerEscuchaVoz : iniciarEscuchaVoz}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '42px',
+              height: '42px',
+              borderRadius: '8px',
+              border: 'none',
+              background: isListening
+                ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
+                : 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+              color: '#ffffff',
+              cursor: 'pointer',
+              flexShrink: 0,
+              animation: isListening ? 'pulseMic 1.4s infinite' : 'none',
+              boxShadow: isListening ? '0 0 12px rgba(239, 68, 68, 0.6)' : '0 2px 6px rgba(2, 132, 199, 0.3)',
+              transition: 'all 0.2s ease',
+            }}
+            title={isListening ? 'Detener escucha' : 'Hablar con comando de voz'}
+          >
+            {isListening ? <MicOff size={20} /> : <Mic size={20} />}
+          </button>
+
+          {/* Animación de ondas si está escuchando */}
+          {isListening && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '3px', padding: '0 4px' }}>
+              {[0, 0.15, 0.3, 0.45, 0.6].map((delay, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    width: '3px',
+                    height: '14px',
+                    backgroundColor: '#ef4444',
+                    borderRadius: '2px',
+                    animation: `soundWave 0.8s ease-in-out infinite alternate ${delay}s`,
+                  }}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Campo de texto / Transcripción en vivo */}
+          <input
+            type="text"
+            value={textoComando}
+            onChange={(e) => setTextoComando(e.target.value)}
+            placeholder={
+              isListening
+                ? 'Escuchando tu voz... habla con claridad (ej: "Muestra cancelaciones de este mes")'
+                : 'Ej: "Muestra cancelaciones de este mes", "Filtrar por Pediatría", "Dame un resumen", "Exportar a Excel"...'
+            }
+            style={{
+              flex: 1,
+              background: 'transparent',
+              border: 'none',
+              outline: 'none',
+              color: isListening ? '#fca5a5' : '#f8fafc',
+              fontSize: '0.82rem',
+              fontWeight: 500,
+              padding: '0.4rem 0.2rem',
+            }}
+          />
+
+          {/* Botón de Enviar Comando */}
+          <button
+            type="submit"
+            disabled={!textoComando.trim()}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              background: !textoComando.trim() ? '#1e293b' : '#0284c7',
+              color: !textoComando.trim() ? '#64748b' : '#ffffff',
+              border: 'none',
+              borderRadius: '7px',
+              padding: '0.45rem 0.85rem',
+              fontSize: '0.75rem',
+              fontWeight: 700,
+              cursor: !textoComando.trim() ? 'not-allowed' : 'pointer',
+              transition: 'background 0.15s ease',
+            }}
+          >
+            <span>Ejecutar</span>
+            <Send size={13} />
+          </button>
+        </form>
+
+        {/* Notificación de Feedback / Resultado del comando */}
+        {voiceFeedback && (
+          <div style={{
+            marginTop: '0.65rem',
+            padding: '0.5rem 0.85rem',
+            borderRadius: '8px',
+            fontSize: '0.74rem',
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            background: (voiceFeedback.type === 'error' || voiceFeedback.type === 'warning' || voiceFeedback.tipo === 'error')
+              ? 'rgba(239, 68, 68, 0.15)'
+              : (voiceFeedback.type === 'info' || voiceFeedback.tipo === 'info')
+              ? 'rgba(56, 189, 248, 0.15)'
+              : 'rgba(16, 185, 129, 0.15)',
+            border: `1px solid ${
+              (voiceFeedback.type === 'error' || voiceFeedback.type === 'warning' || voiceFeedback.tipo === 'error')
+                ? 'rgba(239, 68, 68, 0.35)'
+                : (voiceFeedback.type === 'info' || voiceFeedback.tipo === 'info')
+                ? 'rgba(56, 189, 248, 0.35)'
+                : 'rgba(16, 185, 129, 0.35)'
+            }`,
+            color: (voiceFeedback.type === 'error' || voiceFeedback.type === 'warning' || voiceFeedback.tipo === 'error')
+              ? '#fca5a5'
+              : (voiceFeedback.type === 'info' || voiceFeedback.tipo === 'info')
+              ? '#7dd3fc'
+              : '#6ee7b7',
+          }}>
+            <span>{voiceFeedback.text || voiceFeedback.mensaje}</span>
+            <button
+              type="button"
+              onClick={() => setVoiceFeedback(null)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'inherit',
+                fontSize: '0.85rem',
+                cursor: 'pointer',
+                padding: '0 4px',
+              }}
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
+        {/* Panel Desplegable de Sugerencias de qué pedir */}
+        {sugerenciasAbiertas && (
+          <div style={{
+            marginTop: '0.85rem',
+            paddingTop: '0.85rem',
+            borderTop: '1px solid #334155',
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: '0.6rem',
+            }}>
+              <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#fbbf24', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                💡 Sugerencias Rápidas: Haz clic en cualquiera o dictalo con tu voz
+              </span>
+              <span style={{ fontSize: '0.68rem', color: '#94a3b8' }}>
+                Clic directo para ejecutar
+              </span>
+            </div>
+
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+              gap: '0.75rem',
+            }}>
+              {(sugerenciasVoz || []).map((cat, cIdx) => (
+                <div
+                  key={cIdx}
+                  style={{
+                    background: 'rgba(15, 23, 42, 0.6)',
+                    borderRadius: '8px',
+                    padding: '0.65rem 0.75rem',
+                    border: '1px solid #1e293b',
+                  }}
+                >
+                  <div style={{
+                    fontSize: '0.7rem',
+                    fontWeight: 800,
+                    color: cat.color || '#38bdf8',
+                    marginBottom: '0.45rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}>
+                    {cat.categoria}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                    {(cat.items || []).map((it, iIdx) => (
+                      <button
+                        key={iIdx}
+                        type="button"
+                        onClick={() => procesarComandoVoz(it.comando)}
+                        style={{
+                          textAlign: 'left',
+                          background: 'rgba(30, 41, 59, 0.7)',
+                          border: '1px solid #334155',
+                          borderRadius: '6px',
+                          padding: '0.35rem 0.55rem',
+                          color: '#e2e8f0',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '2px',
+                          transition: 'all 0.15s ease',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = 'rgba(56, 189, 248, 0.15)';
+                          e.currentTarget.style.borderColor = '#38bdf8';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = 'rgba(30, 41, 59, 0.7)';
+                          e.currentTarget.style.borderColor = '#334155';
+                        }}
+                        title={`Comando de voz: "${it.comando}"`}
+                      >
+                        <span style={{ fontSize: '0.73rem', fontWeight: 700, color: '#f8fafc' }}>
+                          {it.label}
+                        </span>
+                        <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>
+                          {it.desc}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* =========================================================================

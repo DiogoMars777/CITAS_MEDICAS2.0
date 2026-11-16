@@ -1,10 +1,24 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { API_ENDPOINTS } from '@/config/api';
+import {
+  parsearComandoReporte,
+  generarGuionResumen,
+  SUGERENCIAS_VOZ_REPORTES,
+} from './CU21_VoiceParser';
 
 const API_BASE = API_ENDPOINTS.reportes;
 
+const getAuthHeaders = () => {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  return {
+    Accept: 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+};
+
 /**
  * Controller Hook para CU21 - Generar Reportes Clínicos y Estadísticos
+ * Con Asistente de Comandos de Voz y Sugerencias Inteligentes
  */
 export const useCU21ReportesController = () => {
   // Pestaña activa
@@ -31,12 +45,25 @@ export const useCU21ReportesController = () => {
   // Modal de vista previa / impresión PDF formal
   const [modalImpresionAbierto, setModalImpresionAbierto] = useState(false);
 
+  // =========================================================================
+  // ESTADOS Y REFERENCIAS PARA COMANDOS DE VOZ Y ASISTENCIA ANALÍTICA
+  // =========================================================================
+  const [isListening, setIsListening] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [voiceMuted, setVoiceMuted] = useState(false);
+  const [voiceTranscript, setVoiceTranscript] = useState('');
+  const [voiceFeedback, setVoiceFeedback] = useState(null); // { type: 'success' | 'info' | 'warning', text: string }
+  const [sugerenciasAbiertas, setSugerenciasAbiertas] = useState(false);
+
+  const recognitionRef = useRef(null);
+  const synthRef = useRef(typeof window !== 'undefined' ? window.speechSynthesis : null);
+
   /**
    * Cargar metadatos para filtros
    */
   const cargarMeta = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/meta`, { headers: { Accept: 'application/json' } });
+      const res = await fetch(`${API_BASE}/meta`, { headers: getAuthHeaders() });
       const json = await res.json();
       if (json.status === 'success') {
         setMeta(json.data);
@@ -72,7 +99,7 @@ export const useCU21ReportesController = () => {
       else if (reporteActivo === 'CANCELACIONES') endpoint = 'cancelaciones-inasistencias';
 
       const res = await fetch(`${API_BASE}/${endpoint}?${params.toString()}`, {
-        headers: { Accept: 'application/json' },
+        headers: getAuthHeaders(),
       });
       const json = await res.json();
 
@@ -102,7 +129,7 @@ export const useCU21ReportesController = () => {
     try {
       await fetch(`${API_BASE}/auditar-exportacion`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({
           tipo_reporte: reporteActivo,
           formato,
@@ -117,7 +144,7 @@ export const useCU21ReportesController = () => {
   /**
    * Exportar datos actuales a CSV (formato compatible con Excel con BOM UTF-8)
    */
-  const exportarCSV = () => {
+  const exportarCSV = useCallback(() => {
     try {
       let csvContent = '\uFEFF'; // BOM para soportar tildes en Excel
       let nombreArchivo = `Reporte_${reporteActivo}_${new Date().toISOString().split('T')[0]}.csv`;
@@ -162,15 +189,231 @@ export const useCU21ReportesController = () => {
       console.error('Error al exportar CSV:', err);
       alert('Ocurrió un error al generar el archivo CSV.');
     }
-  };
+  }, [reporteActivo, datosProductividad, datosMorbilidad, datosLaboratorios, datosCancelaciones]);
 
   /**
    * Abrir modal de vista formal e imprimir en PDF
    */
-  const abrirVistaImpresion = () => {
+  const abrirVistaImpresion = useCallback(() => {
     setModalImpresionAbierto(true);
     auditarExportacion('PDF_IMPRESION');
-  };
+  }, []);
+
+  // =========================================================================
+  // SISTEMA DE COMANDOS DE VOZ Y SÍNTESIS DE AUDIO (TTS)
+  // =========================================================================
+
+  /**
+   * Reproducir texto mediante síntesis de voz (Web Speech Synthesis)
+   */
+  const reproducirAudio = useCallback((texto) => {
+    if (voiceMuted || !synthRef.current || typeof window === 'undefined') return;
+
+    try {
+      synthRef.current.cancel();
+      const utterance = new SpeechSynthesisUtterance(texto);
+      utterance.lang = 'es-BO';
+      utterance.rate = 1.05;
+      utterance.pitch = 1.0;
+
+      const voices = synthRef.current.getVoices();
+      const vozEs = voices.find((v) => v.lang.startsWith('es') || v.lang.includes('ES') || v.lang.includes('BO'));
+      if (vozEs) utterance.voice = vozEs;
+
+      utterance.onstart = () => setIsSpeaking(true);
+      utterance.onend = () => setIsSpeaking(false);
+      utterance.onerror = () => setIsSpeaking(false);
+
+      synthRef.current.speak(utterance);
+    } catch (e) {
+      console.warn('Error en síntesis de voz:', e);
+      setIsSpeaking(false);
+    }
+  }, [voiceMuted]);
+
+  /**
+   * Detener síntesis de voz activa
+   */
+  const detenerAudio = useCallback(() => {
+    if (synthRef.current) {
+      synthRef.current.cancel();
+      setIsSpeaking(false);
+    }
+  }, []);
+
+  /**
+   * Obtener datos del reporte actual para generar el resumen
+   */
+  const getDatosReporteActual = useCallback(() => {
+    if (reporteActivo === 'PRODUCTIVIDAD') return datosProductividad;
+    if (reporteActivo === 'MORBILIDAD') return datosMorbilidad;
+    if (reporteActivo === 'LABORATORIOS') return datosLaboratorios;
+    if (reporteActivo === 'CANCELACIONES') return datosCancelaciones;
+    return null;
+  }, [reporteActivo, datosProductividad, datosMorbilidad, datosLaboratorios, datosCancelaciones]);
+
+  /**
+   * Procesa un comando de voz o texto escrito
+   */
+  const procesarComandoVoz = useCallback((comandoTexto) => {
+    if (!comandoTexto || !comandoTexto.trim()) return;
+
+    const parsed = parsearComandoReporte(comandoTexto, meta);
+
+    // 1. Acciones inmediatas
+    if (parsed.accion === 'RESUMEN') {
+      const datosActuales = getDatosReporteActual();
+      const guion = generarGuionResumen(reporteActivo, datosActuales);
+      setVoiceFeedback({ type: 'success', text: `🎙️ Resumen: ${guion}` });
+      reproducirAudio(guion);
+      return;
+    }
+
+    if (parsed.accion === 'EXPORTAR') {
+      setVoiceFeedback({ type: 'success', text: '📥 Exportando datos actuales a formato Excel (CSV)...' });
+      exportarCSV();
+      reproducirAudio('Exportando el reporte actual a Excel.');
+      return;
+    }
+
+    if (parsed.accion === 'IMPRIMIR') {
+      setVoiceFeedback({ type: 'success', text: '🖨️ Abriendo vista formal de impresión y guardado PDF...' });
+      abrirVistaImpresion();
+      reproducirAudio('Abriendo vista formal para impresión.');
+      return;
+    }
+
+    if (parsed.accion === 'REFRESCAR') {
+      setVoiceFeedback({ type: 'info', text: '🔄 Recargando datos de la base de datos...' });
+      cargarReporte();
+      reproducirAudio('Actualizando información de los reportes.');
+      return;
+    }
+
+    // 2. Modificaciones de filtros y estado
+    let hubieronCambios = false;
+
+    if (parsed.tipoReporte && parsed.tipoReporte !== reporteActivo) {
+      setReporteActivo(parsed.tipoReporte);
+      hubieronCambios = true;
+    }
+
+    if (parsed.periodo && parsed.periodo !== periodo) {
+      setPeriodo(parsed.periodo);
+      hubieronCambios = true;
+    }
+
+    if (parsed.idEspecialidad && parsed.idEspecialidad !== idEspecialidad) {
+      setIdEspecialidad(parsed.idEspecialidad);
+      hubieronCambios = true;
+    }
+
+    if (parsed.idMedico && parsed.idMedico !== idMedico) {
+      setIdMedico(parsed.idMedico);
+      hubieronCambios = true;
+    }
+
+    if (hubieronCambios) {
+      setVoiceFeedback({ type: 'success', text: parsed.descripcionAccion });
+      if (parsed.mensajeVoz) {
+        reproducirAudio(parsed.mensajeVoz);
+      }
+    } else {
+      setVoiceFeedback({
+        type: 'warning',
+        text: parsed.descripcionAccion || `Comando recibido: "${comandoTexto}". Revisa las sugerencias de qué pedir.`,
+      });
+      if (parsed.mensajeVoz) {
+        reproducirAudio(parsed.mensajeVoz);
+      }
+    }
+  }, [meta, reporteActivo, periodo, idEspecialidad, idMedico, getDatosReporteActual, reproducirAudio, exportarCSV, abrirVistaImpresion, cargarReporte]);
+
+  /**
+   * Iniciar captura de voz con Web Speech API
+   */
+  const iniciarEscuchaVoz = useCallback(() => {
+    if (typeof window === 'undefined') return;
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setVoiceFeedback({
+        type: 'warning',
+        text: 'Tu navegador no soporta reconocimiento de voz nativo. Puedes escribir tu instrucción en el campo de texto.',
+      });
+      return;
+    }
+
+    try {
+      if (recognitionRef.current) {
+        recognitionRef.current.abort();
+      }
+
+      detenerAudio();
+
+      const reco = new SpeechRecognition();
+      reco.continuous = false;
+      reco.interimResults = true;
+      reco.lang = 'es-BO';
+
+      reco.onstart = () => {
+        setIsListening(true);
+        setVoiceTranscript('');
+        setVoiceFeedback({ type: 'info', text: '🎙️ Escuchando tu voz... Di tu instrucción o consulta.' });
+      };
+
+      reco.onresult = (event) => {
+        let finalTrans = '';
+        let interimTrans = '';
+
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            finalTrans += event.results[i][0].transcript;
+          } else {
+            interimTrans += event.results[i][0].transcript;
+          }
+        }
+
+        const textoActual = (finalTrans || interimTrans).trim();
+        setVoiceTranscript(textoActual);
+
+        if (finalTrans) {
+          setIsListening(false);
+          procesarComandoVoz(finalTrans);
+        }
+      };
+
+      reco.onerror = (event) => {
+        setIsListening(false);
+        if (event.error === 'not-allowed') {
+          setVoiceFeedback({ type: 'warning', text: 'Acceso al micrófono denegado. Permite el permiso en tu navegador.' });
+        } else if (event.error !== 'no-speech') {
+          setVoiceFeedback({ type: 'warning', text: `Error de reconocimiento: ${event.error}` });
+        }
+      };
+
+      reco.onend = () => {
+        setIsListening(false);
+      };
+
+      recognitionRef.current = reco;
+      reco.start();
+    } catch (err) {
+      console.warn('Error al iniciar micrófono:', err);
+      setIsListening(false);
+      setVoiceFeedback({ type: 'warning', text: 'No se pudo iniciar el micrófono. Revisa los permisos de audio.' });
+    }
+  }, [detenerAudio, procesarComandoVoz]);
+
+  /**
+   * Detener manualmente la escucha
+   */
+  const detenerEscuchaVoz = useCallback(() => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    }
+  }, []);
 
   return {
     reporteActivo,
@@ -197,6 +440,23 @@ export const useCU21ReportesController = () => {
     modalImpresionAbierto,
     setModalImpresionAbierto,
     abrirVistaImpresion,
+    // Voice API & Suggestions
+    isListening,
+    isSpeaking,
+    voiceMuted,
+    setVoiceMuted,
+    voiceTranscript,
+    setVoiceTranscript,
+    voiceFeedback,
+    setVoiceFeedback,
+    sugerenciasAbiertas,
+    setSugerenciasAbiertas,
+    sugerenciasVoz: SUGERENCIAS_VOZ_REPORTES,
+    iniciarEscuchaVoz,
+    detenerEscuchaVoz,
+    procesarComandoVoz,
+    reproducirAudio,
+    detenerAudio,
   };
 };
 
