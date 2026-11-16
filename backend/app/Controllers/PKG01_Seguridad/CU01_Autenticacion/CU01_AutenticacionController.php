@@ -155,23 +155,13 @@ class CU01_AutenticacionController extends Controller
                 Log::warning('No se pudo registrar bitacora de login: ' . $e->getMessage());
             }
 
-            $paciente = Paciente::where('id_usuario', $user->id_usuario)->first();
-            $medico = Medico::where('id_usuario', $user->id_usuario)->first();
+            $userData = $this->formatearDatosUsuario($user);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Inicio de sesión exitoso. Bienvenido a la Clínica Vida Salud.',
                 'token'   => $token,
-                'user'    => [
-                    'id_usuario'      => $user->id_usuario,
-                    'username'        => $user->username,
-                    'email'           => $user->email,
-                    'rol'             => $rolNombre,
-                    'id_paciente'     => $paciente?->id_paciente,
-                    'id_medico'       => $medico?->id_medico,
-                    'nombre_completo' => $paciente ? $paciente->nombre_completo : ($medico ? "Dr(a). {$medico->nombre_completo}" : $user->username),
-                    'ultimo_login'    => $user->ultimo_login,
-                ],
+                'user'    => $userData,
             ]);
         } catch (\Throwable $e) {
             Log::error('Excepción crítica en iniciarSesion: ' . $e->getMessage(), [
@@ -444,23 +434,145 @@ class CU01_AutenticacionController extends Controller
             return response()->json(['success' => false, 'message' => 'No autenticado.'], 401);
         }
 
-        $rolNombre = DB::table('roles')->where('id_rol', $user->id_rol)->value('nombre_rol') ?? 'USUARIO';
-        $paciente = Paciente::where('id_usuario', $user->id_usuario)->first();
-        $medico = Medico::where('id_usuario', $user->id_usuario)->first();
-
         return response()->json([
             'success' => true,
-            'user'    => [
-                'id_usuario'      => $user->id_usuario,
-                'username'        => $user->username,
-                'email'           => $user->email,
-                'rol'             => $rolNombre,
-                'id_paciente'     => $paciente?->id_paciente,
-                'id_medico'       => $medico?->id_medico,
-                'nombre_completo' => $paciente ? $paciente->nombre_completo : ($medico ? "Dr(a). {$medico->nombre_completo}" : $user->username),
-                'ultimo_login'    => $user->ultimo_login,
-            ]
+            'user'    => $this->formatearDatosUsuario($user),
         ]);
+    }
+
+    /**
+     * Construye la ficha completa y detallada de datos de la persona según su rol
+     */
+    protected function formatearDatosUsuario(Usuario $user): array
+    {
+        $rolNombre = DB::table('roles')->where('id_rol', $user->id_rol)->value('nombre_rol') ?? 'USUARIO';
+        
+        $paciente = Paciente::with(['historiaClinica', 'contactoEmergencia'])
+            ->where('id_usuario', $user->id_usuario)
+            ->first();
+            
+        $medico = Medico::with('especialidades')
+            ->where('id_usuario', $user->id_usuario)
+            ->first();
+
+        $nombreCompleto = $paciente 
+            ? $paciente->nombre_completo 
+            : ($medico ? "Dr(a). {$medico->nombre_completo}" : $user->username);
+
+        $datosPersona = [
+            'id_usuario'      => $user->id_usuario,
+            'username'        => $user->username,
+            'email'           => $user->email,
+            'rol'             => $rolNombre,
+            'id_paciente'     => $paciente?->id_paciente,
+            'id_medico'       => $medico?->id_medico,
+            'nombre_completo' => $nombreCompleto,
+            'ultimo_login'    => $user->ultimo_login,
+            'fecha_registro'  => $user->fecha_creacion,
+            'estado_cuenta'   => $user->estado ?? 'ACTIVO',
+        ];
+
+        if ($paciente) {
+            $fechaNac = $paciente->fecha_nacimiento ? Carbon::parse($paciente->fecha_nacimiento)->format('Y-m-d') : null;
+            $edad = $paciente->edad ?? ($paciente->fecha_nacimiento ? Carbon::parse($paciente->fecha_nacimiento)->age : null);
+            $expediente = $paciente->historiaClinica?->numero_expediente ?? ('EXP-' . str_pad($paciente->id_paciente, 6, '0', STR_PAD_LEFT));
+            $tipoSangre = $paciente->historiaClinica?->tipo_sangre ?? 'O+';
+            $contactoEmerg = $paciente->contactoEmergencia ? [
+                'nombre'     => $paciente->contactoEmergencia->nombre_completo,
+                'parentesco' => $paciente->contactoEmergencia->parentesco,
+                'telefono'   => $paciente->contactoEmergencia->telefono,
+            ] : null;
+
+            $datosPersona['perfil'] = [
+                'tipo'                => 'PACIENTE',
+                'ci'                  => $paciente->ci,
+                'nombres'             => $paciente->nombres,
+                'apellidos'           => $paciente->apellidos,
+                'nombre_completo'     => $paciente->nombre_completo,
+                'fecha_nacimiento'    => $fechaNac,
+                'edad'                => $edad,
+                'sexo'                => $paciente->sexo,
+                'telefono'            => $paciente->telefono,
+                'email'               => $paciente->email ?? $user->email,
+                'direccion'           => $paciente->direccion,
+                'estado'              => $paciente->estado,
+                'numero_expediente'   => $expediente,
+                'tipo_sangre'         => $tipoSangre,
+                'contacto_emergencia' => $contactoEmerg,
+            ];
+
+            // Propiedades aplanadas para acceso rápido
+            $datosPersona['ci'] = $paciente->ci;
+            $datosPersona['nombres'] = $paciente->nombres;
+            $datosPersona['apellidos'] = $paciente->apellidos;
+            $datosPersona['telefono'] = $paciente->telefono;
+            $datosPersona['direccion'] = $paciente->direccion;
+            $datosPersona['sexo'] = $paciente->sexo;
+            $datosPersona['fecha_nacimiento'] = $fechaNac;
+            $datosPersona['edad'] = $edad;
+            $datosPersona['numero_expediente'] = $expediente;
+            $datosPersona['tipo_sangre'] = $tipoSangre;
+            $datosPersona['contacto_emergencia'] = $contactoEmerg;
+        } elseif ($medico) {
+            $especialidadesNombres = $medico->especialidades->pluck('nombre_especialidad')->all();
+            if (empty($especialidadesNombres)) {
+                $esps = DB::table('medico_especialidades')
+                    ->join('especialidades', 'medico_especialidades.id_especialidad', '=', 'especialidades.id_especialidad')
+                    ->where('medico_especialidades.id_medico', $medico->id_medico)
+                    ->pluck('especialidades.nombre_especialidad')
+                    ->all();
+                $especialidadesNombres = !empty($esps) ? $esps : ['Medicina General'];
+            }
+
+            $fechaIngreso = $medico->fecha_ingreso ? Carbon::parse($medico->fecha_ingreso)->format('Y-m-d') : null;
+
+            $datosPersona['perfil'] = [
+                'tipo'                  => 'MEDICO',
+                'matricula_profesional' => $medico->numero_registro_profesional,
+                'nombres'               => $medico->nombres,
+                'apellidos'             => $medico->apellidos,
+                'nombre_completo'       => "Dr(a). {$medico->nombre_completo}",
+                'telefono'              => $medico->telefono,
+                'email'                 => $medico->email ?? $user->email,
+                'estado'                => $medico->estado,
+                'fecha_ingreso'         => $fechaIngreso,
+                'especialidades'        => $especialidadesNombres,
+                'colegiatura'           => 'Colegio Médico de Bolivia - Habilitado',
+            ];
+
+            // Propiedades aplanadas
+            $datosPersona['matricula_profesional'] = $medico->numero_registro_profesional;
+            $datosPersona['nombres'] = $medico->nombres;
+            $datosPersona['apellidos'] = $medico->apellidos;
+            $datosPersona['telefono'] = $medico->telefono;
+            $datosPersona['especialidades'] = $especialidadesNombres;
+            $datosPersona['fecha_ingreso'] = $fechaIngreso;
+            $datosPersona['colegiatura'] = 'Colegio Médico de Bolivia - Habilitado';
+        } else {
+            $esAdmin = strtoupper($rolNombre) === 'ADMINISTRADOR';
+            $cargo = $esAdmin ? 'Director de Sistemas & Auditoría Hospitalaria' : 'Recepcionista y Admisión General';
+            $depto = $esAdmin ? 'Dirección de Tecnologías y Seguridad Clínica' : 'Atención al Paciente y Facturación';
+
+            $datosPersona['perfil'] = [
+                'tipo'            => strtoupper($rolNombre),
+                'nombres'         => $user->username,
+                'apellidos'       => 'Personal de Planta',
+                'nombre_completo' => ucfirst($user->username) . " ({$rolNombre})",
+                'cargo'           => $cargo,
+                'departamento'    => $depto,
+                'sede'            => 'Sede Central - Clínica Vida Salud',
+                'estado'          => $user->estado ?? 'ACTIVO',
+                'telefono'        => '+591 4 4567890 (Int. 104)',
+                'email'           => $user->email,
+            ];
+
+            $datosPersona['cargo'] = $cargo;
+            $datosPersona['departamento'] = $depto;
+            $datosPersona['sede'] = 'Sede Central - Clínica Vida Salud';
+            $datosPersona['telefono'] = '+591 4 4567890 (Int. 104)';
+        }
+
+        return $datosPersona;
     }
 
     // ==========================================
