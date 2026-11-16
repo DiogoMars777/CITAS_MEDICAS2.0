@@ -133,7 +133,7 @@ class CU08_BloqueoAgendaController extends Controller
         $citasAfectadas = \App\Models\PKG05_GestionCitasConcurrencia\CU10_ReservarCita\Cita::with(['paciente', 'medico'])
             ->where('id_medico', (int) $request->input('id_medico'))
             ->whereBetween('fecha_cita', [$request->input('fecha_inicio'), $request->input('fecha_fin')])
-            ->whereNotIn('estado_cita', ['CANCELADA', 'ATENDIDA', 'INASISTENCIA'])
+            ->where('estado_cita', '!=', 'CANCELADA')
             ->where('hora_inicio', '<', $horaFin)
             ->where('hora_fin', '>', $horaInicio)
             ->get();
@@ -142,8 +142,12 @@ class CU08_BloqueoAgendaController extends Controller
 
         foreach ($citasAfectadas as $citaAfectada) {
             \Illuminate\Support\Facades\DB::transaction(function () use ($citaAfectada, $bloqueo, $usuarioId, $ahoraBolivia, &$citasCanceladasCount) {
+                // Si la cita tenía registro de atención médica para este turno bloqueado, se invalida
+                \App\Models\PKG06_AtencionMedica\CU16_AtenderConsulta\AtencionMedica::where('id_cita', $citaAfectada->id_cita)->delete();
+
                 // Cancelar la cita por emergencia
                 $citaAfectada->estado_cita = 'CANCELADA';
+                $citaAfectada->fecha_actualizacion = $ahoraBolivia;
                 $citaAfectada->save();
 
                 \App\Models\PKG05_GestionCitasConcurrencia\CU12_CancelarCita\CancelacionCita::create([
@@ -154,7 +158,7 @@ class CU08_BloqueoAgendaController extends Controller
                 ]);
 
                 // Generar recordatorio / señal al paciente para que reprograme
-                $pacienteNombre = $citaAfectada->paciente?->nombres ?? 'Paciente';
+                $pacienteNombre = $citaAfectada->paciente?->nombres ?? ($citaAfectada->paciente?->nombre_completo ?? 'Paciente');
                 $medicoNombre = $citaAfectada->medico?->nombre_completo ?? 'Médico Tratante';
                 \App\Models\PKG08_DashboardReportes\CU19_Recordatorios\Recordatorio::create([
                     'id_cita'          => $citaAfectada->id_cita,
@@ -163,7 +167,7 @@ class CU08_BloqueoAgendaController extends Controller
                     'fecha_envio'      => $ahoraBolivia,
                     'estado_envio'     => 'ENVIADO',
                     'intentos'         => 1,
-                    'mensaje'          => "Estimado(a) {$pacienteNombre}: Por motivo de bloqueo/emergencia médica ({$bloqueo->motivo}), su cita del {$citaAfectada->fecha_cita} ({$citaAfectada->hora_inicio}) con el Dr(a). {$medicoNombre} ha sido cancelada. Ingrese a su portal de paciente para reprogramar su turno prioritariamente sin costo adicional.",
+                    'mensaje'          => "🚨 Estimado(a) {$pacienteNombre}: Por motivo de bloqueo/emergencia médica ({$bloqueo->motivo}), su cita (#{$citaAfectada->codigo_cita}) del {$citaAfectada->fecha_cita} ({$citaAfectada->hora_inicio}) con el Dr(a). {$medicoNombre} ha sido cancelada. Ingrese a su portal de paciente para reprogramar su turno prioritariamente sin costo adicional.",
                 ]);
 
                 $citasCanceladasCount++;

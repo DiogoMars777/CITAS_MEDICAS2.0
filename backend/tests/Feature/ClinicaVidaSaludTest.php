@@ -658,4 +658,70 @@ class ClinicaVidaSaludTest extends TestCase
         $this->assertNotNull($estudio->archivo_resultado_url);
         $this->assertStringContainsString('lab-test-001', $estudio->archivo_resultado_url);
     }
+
+    /**
+     * TEST 23: Bloqueo de agenda por emergencia médica cancela citas en el rango y notifica al paciente para reprogramar (CU08 + CU19 + CU11)
+     */
+    public function test_23_bloqueo_agenda_cancela_citas_en_horario_y_notifica_paciente(): void
+    {
+        Sanctum::actingAs($this->recepcionista);
+
+        $fecha = $this->obtenerFechaFutura(2);
+
+        // 1. Crear cita para Dr. 1 a las 11:00
+        $resCita = $this->postJson('/api/citas', [
+            'id_paciente'     => 1,
+            'id_medico'       => 1,
+            'id_especialidad' => 1,
+            'fecha_cita'      => $fecha,
+            'hora_inicio'     => '11:00',
+            'hora_fin'        => '11:15',
+            'motivo_consulta' => 'Consulta prequirúrgica',
+        ]);
+        $resCita->assertStatus(201);
+        $idCita = $resCita->json('data.id_cita');
+
+        // Confirmar pago
+        DB::table('pagos')->insert([
+            'codigo_pago'        => 'PAG-BLQ-TEST-01',
+            'id_cita'            => $idCita,
+            'id_paciente'        => 1,
+            'monto'              => 150.00,
+            'metodo_pago'        => 'QR',
+            'estado_pago'        => 'COMPLETADO',
+            'numero_comprobante' => 'COMP-TEST-BLQ',
+            'fecha_pago'         => Carbon::now('America/La_Paz'),
+            'id_usuario_cajero'  => 2,
+        ]);
+
+        // 2. Registrar bloqueo de agenda de 10:30 a 12:00 por CIRUGIA / EMERGENCIA
+        $resBloqueo = $this->postJson('/api/bloqueos', [
+            'id_medico'    => 1,
+            'fecha_inicio' => $fecha,
+            'fecha_fin'    => $fecha,
+            'hora_inicio'  => '10:30',
+            'hora_fin'     => '12:00',
+            'tipo_bloqueo' => 'CIRUGIA',
+            'motivo'       => 'Cirugía de urgencia no programada',
+        ]);
+
+        $resBloqueo->assertStatus(201);
+        $this->assertEquals(1, $resBloqueo->json('citas_canceladas_count'));
+
+        // 3. Verificar que la cita fue cancelada
+        $cita = DB::table('citas')->where('id_cita', $idCita)->first();
+        $this->assertEquals('CANCELADA', $cita->estado_cita);
+
+        // 4. Verificar que el paciente recibe la notificación en mis-notificaciones
+        Sanctum::actingAs($this->paciente);
+        $resNotifs = $this->getJson('/api/notificaciones');
+        $resNotifs->assertStatus(200);
+        $this->assertTrue($resNotifs->json('success'));
+
+        $notifs = $resNotifs->json('data');
+        $notifEmergencia = collect($notifs)->firstWhere('id_cita', $idCita);
+        $this->assertNotNull($notifEmergencia, 'El paciente debe tener una notificación asociada a la cita cancelada por bloqueo.');
+        $this->assertEquals('EMERGENCIA', $notifEmergencia['tipo']);
+        $this->assertStringContainsString('Cirugía de urgencia', $notifEmergencia['mensaje']);
+    }
 }

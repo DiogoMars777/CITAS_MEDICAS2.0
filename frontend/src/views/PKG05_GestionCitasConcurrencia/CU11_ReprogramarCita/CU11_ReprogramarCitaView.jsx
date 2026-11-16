@@ -106,9 +106,16 @@ export const CU11_ReprogramarCitaView = ({ currentUser = null }) => {
     setActionLoading(true);
     setError(null);
     try {
+      const token = currentUser?.token || localStorage.getItem('token') || (localStorage.getItem('clinica_user') ? JSON.parse(localStorage.getItem('clinica_user'))?.token : null);
+      const headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const res = await fetch(`${API_BASE}/${idCita}/reprogramar`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(dataReprogramacion),
       });
       const data = await res.json();
@@ -249,8 +256,11 @@ export const CU11_ReprogramarCitaView = ({ currentUser = null }) => {
               citas.map((c) => {
                 const st = ESTADOS_CITA[c.estado_cita] || ESTADOS_CITA.PROGRAMADA;
                 const isPaid = Boolean(c.esta_pagada);
-                // Si la cita está activa o fue cancelada (por emergencia o clínica) pero ya está pagada, es reprogramable
-                const canReprogram = isPaid || (['ADMINISTRADOR', 'RECEPCIONISTA'].includes(userRole) && ['PROGRAMADA', 'CONFIRMADA'].includes(c.estado_cita));
+                const esTerminalInmutable = ['ATENDIDA', 'INASISTENCIA'].includes(c.estado_cita);
+                // Si la cita no fue atendida ni cerrada por inasistencia, y ya está pagada (o es recepcionista/admin para activas), es 100% reprogramable
+                const canReprogram = !esTerminalInmutable && (
+                  isPaid || (['ADMINISTRADOR', 'RECEPCIONISTA'].includes(userRole) && ['PROGRAMADA', 'CONFIRMADA'].includes(c.estado_cita))
+                );
 
                 return (
                   <tr key={c.id_cita} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.15s ease' }}>
@@ -280,7 +290,11 @@ export const CU11_ReprogramarCitaView = ({ currentUser = null }) => {
                         <span style={{ fontSize: '0.75rem', fontWeight: 700, padding: '3px 10px', borderRadius: '12px', background: st.bg, color: st.text, border: `1px solid ${st.border}`, width: 'fit-content' }}>
                           {st.label}
                         </span>
-                        {isPaid ? (
+                        {c.estado_cita === 'CANCELADA' && isPaid ? (
+                          <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#059669', background: '#ecfdf5', border: '1px solid #a7f3d0', padding: '2px 8px', borderRadius: '10px', width: 'fit-content' }}>
+                            ✓ Cancelada (Crédito disponible para Reprogramar)
+                          </span>
+                        ) : isPaid ? (
                           <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#059669', background: '#ecfdf5', border: '1px solid #a7f3d0', padding: '2px 8px', borderRadius: '10px', width: 'fit-content' }}>
                             ✓ Pagada (Reprogramable)
                           </span>
@@ -326,13 +340,19 @@ export const CU11_ReprogramarCitaView = ({ currentUser = null }) => {
                             setSelectedCitaForReprogram(c);
                           }}
                           disabled={!canReprogram}
-                          title={!isPaid ? 'Solo citas pagadas pueden reprogramarse' : canReprogram ? 'Reprogramar cita médica' : 'Solo citas activas pueden reprogramarse'}
+                          title={
+                            esTerminalInmutable
+                              ? `Cita en estado ${c.estado_cita}: No puede ser reprogramada`
+                              : !isPaid
+                              ? 'Solo citas pagadas pueden reprogramarse'
+                              : 'Reprogramar cita médica'
+                          }
                           style={{
                             padding: '6px 12px',
                             borderRadius: '8px',
-                            background: canReprogram ? '#e0f2fe' : '#f1f5f9',
-                            border: canReprogram ? '1px solid #bae6fd' : '1px solid #e2e8f0',
-                            color: canReprogram ? '#0284c7' : '#94a3b8',
+                            background: canReprogram ? '#0284c7' : '#f1f5f9',
+                            border: canReprogram ? '1px solid #0284c7' : '1px solid #e2e8f0',
+                            color: canReprogram ? '#ffffff' : '#94a3b8',
                             cursor: canReprogram ? 'pointer' : 'not-allowed',
                             display: 'flex',
                             alignItems: 'center',

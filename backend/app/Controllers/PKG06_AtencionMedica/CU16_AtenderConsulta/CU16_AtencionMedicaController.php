@@ -58,6 +58,21 @@ class CU16_AtencionMedicaController extends Controller
             ], 422);
         }
 
+        // Precondición: Verificar si existe un bloqueo de agenda para el médico en el horario de la cita
+        $bloqueoActivo = \App\Models\PKG04_AgendasHorarios\CU08_BloqueosAgenda\BloqueoAgenda::where('id_medico', $cita->id_medico)
+            ->where('fecha_inicio', '<=', $fechaCita)
+            ->where('fecha_fin', '>=', $fechaCita)
+            ->where('hora_inicio', '<', $cita->hora_fin)
+            ->where('hora_fin', '>', $cita->hora_inicio)
+            ->first();
+
+        if ($bloqueoActivo) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => "La agenda del médico se encuentra bloqueada en este horario por ({$bloqueoActivo->tipo_bloqueo}): {$bloqueoActivo->motivo}. La consulta no puede ser atendida.",
+            ], 422);
+        }
+
         // Precondición de Atención Clínica: La cita debe estar pagada (al menos 1 día antes o regularizada)
         if (!$cita->estaPagada()) {
             return response()->json([
@@ -188,6 +203,28 @@ class CU16_AtencionMedicaController extends Controller
                 'status'  => 'error',
                 'message' => 'Cita no encontrada.',
             ], 404);
+        }
+
+        if (in_array($cita->estado_cita, ['CANCELADA', 'INASISTENCIA'])) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => "La cita se encuentra en estado '{$cita->estado_cita}' y no puede ser atendida ni guardada.",
+            ], 422);
+        }
+
+        $fechaCitaStr = Carbon::parse($cita->fecha_cita)->toDateString();
+        $bloqueoActivo = \App\Models\PKG04_AgendasHorarios\CU08_BloqueosAgenda\BloqueoAgenda::where('id_medico', $cita->id_medico)
+            ->where('fecha_inicio', '<=', $fechaCitaStr)
+            ->where('fecha_fin', '>=', $fechaCitaStr)
+            ->where('hora_inicio', '<', $cita->hora_fin)
+            ->where('hora_fin', '>', $cita->hora_inicio)
+            ->first();
+
+        if ($bloqueoActivo) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => "La agenda médica se encuentra bloqueada por ({$bloqueoActivo->tipo_bloqueo}): {$bloqueoActivo->motivo}. La atención no puede ser procesada.",
+            ], 422);
         }
 
         $paciente = $cita->paciente;

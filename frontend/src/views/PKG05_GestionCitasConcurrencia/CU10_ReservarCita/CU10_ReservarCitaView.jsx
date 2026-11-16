@@ -744,9 +744,15 @@ export const CU10_ReservarCitaView = ({
                                 ✓ Atendida
                               </span>
                             ) : cita.estado_cita === 'CANCELADA' ? (
-                              <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600, padding: '4px 8px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
-                                Cancelada
-                              </span>
+                              cita.esta_pagada ? (
+                                <span style={{ fontSize: '0.72rem', color: '#059669', fontWeight: 700, padding: '4px 8px', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '6px' }}>
+                                  ✓ Pagada (Reprogramable)
+                                </span>
+                              ) : (
+                                <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600, padding: '4px 8px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
+                                  Cancelada
+                                </span>
+                              )
                             ) : (
                               <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600, padding: '4px 8px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
                                 {cita.estado_cita}
@@ -816,9 +822,15 @@ export const CU10_ReservarCitaView = ({
                                 </span>
                               )}
                               {cita.estado_cita === 'CANCELADA' && (
-                                <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600, padding: '4px 8px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
-                                  Cancelada
-                                </span>
+                                cita.esta_pagada ? (
+                                  <span style={{ fontSize: '0.72rem', color: '#059669', fontWeight: 700, padding: '4px 8px', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '6px' }}>
+                                    ✓ Pagada (Reprogramable)
+                                  </span>
+                                ) : (
+                                  <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600, padding: '4px 8px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
+                                    Cancelada
+                                  </span>
+                                )
                               )}
                             </>
                           )}
