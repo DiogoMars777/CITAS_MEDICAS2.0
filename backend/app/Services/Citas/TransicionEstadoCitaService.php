@@ -125,10 +125,19 @@ class TransicionEstadoCitaService
                 break;
 
             case 'CONFIRMADA':
-            case 'INASISTENCIA':
-                // Exclusivo de Recepción o Administración
                 if (!$usuario->esRecepcionista() && !$usuario->esAdmin()) {
-                    throw new HttpException(403, "Acceso denegado: solo el personal de Recepción puede registrar estado '{$nuevoEstado}'.");
+                    throw new HttpException(403, "Acceso denegado: solo el personal de Recepción o Administración puede confirmar la llegada del paciente.");
+                }
+                break;
+
+            case 'INASISTENCIA':
+                if ($usuario->esMedico()) {
+                    $medico = $usuario->medico;
+                    if (!$medico || (int) $cita->id_medico !== (int) $medico->id_medico) {
+                        throw new HttpException(403, 'Acceso denegado: solo el médico asignado a esta cita puede registrar la inasistencia de su paciente.');
+                    }
+                } elseif (!$usuario->esRecepcionista() && !$usuario->esAdmin()) {
+                    throw new HttpException(403, "Acceso denegado: permisos insuficientes para registrar inasistencia.");
                 }
                 break;
 

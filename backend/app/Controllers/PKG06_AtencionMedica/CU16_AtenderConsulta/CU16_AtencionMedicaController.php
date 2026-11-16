@@ -40,6 +40,24 @@ class CU16_AtencionMedicaController extends Controller
             ], 422);
         }
 
+        $nowBolivia = Carbon::now('America/La_Paz');
+        $hoy = $nowBolivia->toDateString();
+        $fechaCita = Carbon::parse($cita->fecha_cita)->toDateString();
+
+        if ($fechaCita < $hoy) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => "La cita pertenece a una fecha pasada ({$fechaCita}) y ha expirado fuera de horario. No puede ser atendida.",
+            ], 422);
+        }
+
+        if ($fechaCita > $hoy) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => "La cita está programada para una fecha futura ({$fechaCita}). No puede ser atendida antes de su jornada.",
+            ], 422);
+        }
+
         // Precondición de Atención Clínica: La cita debe estar pagada (al menos 1 día antes o regularizada)
         if (!$cita->estaPagada()) {
             return response()->json([

@@ -636,7 +636,7 @@ export const MainLayout = ({ currentUser, onLogout }) => {
 
               {activeCUId === 'CU19' && <CU19_RecordatoriosView />}
 
-              {activeCUId === 'CU18' && <CU18_VisualizarEstudiosView />}
+              {activeCUId === 'CU18' && <CU18_VisualizarEstudiosView currentUser={currentUser} />}
 
               {activeCUId === 'CU17' && (
                 <CU17_CargarEstudiosView
@@ -659,6 +659,7 @@ export const MainLayout = ({ currentUser, onLogout }) => {
 
               {activeCUId === 'CU15' && (
                 <CU15_AgendaMedicoView
+                  currentUser={currentUser}
                   onNavigateToCU16={(idCita) => {
                     setSelectedCitaForCU16(idCita);
                     setActiveCUId('CU16');

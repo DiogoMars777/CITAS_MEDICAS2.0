@@ -134,9 +134,12 @@ export const ModalDetalleAuditoria = ({ log, onClose }) => {
             </span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#0f172a', fontWeight: 600, fontSize: '0.88rem', marginTop: '3px' }}>
               <User size={15} color="#0284c7" />
-              <span>{log.usuario_responsable?.username || log.usuario || 'Sistema'}</span>
-              <span style={{ fontSize: '0.72rem', padding: '1px 6px', borderRadius: '4px', background: '#e2e8f0', color: '#475569', fontWeight: 600 }}>
+              <span>{log.usuario_responsable?.nombre || log.usuario_nombre || log.usuario || 'Sistema'}</span>
+              <span style={{ fontSize: '0.72rem', padding: '1px 6px', borderRadius: '4px', background: '#dbeafe', color: '#1e40af', fontWeight: 700 }}>
                 {log.usuario_responsable?.rol || log.rol || 'AUTOR'}
+              </span>
+              <span style={{ fontSize: '0.74rem', color: '#64748b', fontFamily: 'monospace' }}>
+                (@{log.usuario_responsable?.username || log.usuario})
               </span>
             </div>
           </div>

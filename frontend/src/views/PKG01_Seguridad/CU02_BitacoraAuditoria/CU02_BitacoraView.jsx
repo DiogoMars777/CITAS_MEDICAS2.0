@@ -306,7 +306,7 @@ export const CU02_BitacoraView = () => {
                 <th style={{ padding: '0.85rem 1rem' }}>Operación</th>
                 <th style={{ padding: '0.85rem 1rem' }}>Módulo</th>
                 <th style={{ padding: '0.85rem 1rem' }}>Tabla</th>
-                <th style={{ padding: '0.85rem 1rem' }}>Usuario</th>
+                <th style={{ padding: '0.85rem 1rem' }}>Usuario y Rol</th>
                 <th style={{ padding: '0.85rem 1rem' }}>IP</th>
                 <th style={{ padding: '0.85rem 1.15rem', textAlign: 'right' }}>Detalle</th>
               </tr>
@@ -372,8 +372,49 @@ export const CU02_BitacoraView = () => {
                         {log.tabla_afectada}
                       </td>
 
-                      <td style={{ padding: '0.85rem 1rem', fontSize: '0.82rem', color: '#0f172a', fontWeight: 600 }}>
-                        {log.usuario_responsable?.username || 'Sistema'}
+                      <td style={{ padding: '0.85rem 1rem' }}>
+                        {(() => {
+                          const rol = (log.rol || log.usuario_responsable?.rol || '').toUpperCase();
+                          let rolBadge = { bg: '#f1f5f9', color: '#475569', border: '#e2e8f0', label: 'SISTEMA' };
+                          if (rol.includes('ADMIN')) {
+                            rolBadge = { bg: '#f3e8ff', color: '#7e22ce', border: '#d8b4fe', label: 'ADMIN' };
+                          } else if (rol.includes('MEDIC') || rol.includes('DOCTOR')) {
+                            rolBadge = { bg: '#eff6ff', color: '#1d4ed8', border: '#bfdbfe', label: 'MÉDICO' };
+                          } else if (rol.includes('RECEP')) {
+                            rolBadge = { bg: '#ecfdf5', color: '#047857', border: '#a7f3d0', label: 'RECEPCIÓN' };
+                          } else if (rol.includes('PACIENT') || rol.includes('CLIENT')) {
+                            rolBadge = { bg: '#fffbeb', color: '#b45309', border: '#fde68a', label: 'PACIENTE' };
+                          }
+
+                          const nombreMostrar = log.usuario_responsable?.nombre || log.usuario_nombre || log.usuario || 'Sistema';
+                          const username = log.usuario_responsable?.username || log.usuario || 'sistema';
+
+                          return (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                <span style={{
+                                  display: 'inline-block',
+                                  padding: '1px 6px',
+                                  borderRadius: '4px',
+                                  fontSize: '0.68rem',
+                                  fontWeight: 800,
+                                  background: rolBadge.bg,
+                                  color: rolBadge.color,
+                                  border: `1px solid ${rolBadge.border}`,
+                                  fontFamily: 'monospace',
+                                }}>
+                                  {rolBadge.label}
+                                </span>
+                                <span style={{ fontSize: '0.74rem', color: '#64748b', fontFamily: 'monospace' }}>
+                                  @{username}
+                                </span>
+                              </div>
+                              <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#0f172a' }}>
+                                {nombreMostrar}
+                              </span>
+                            </div>
+                          );
+                        })()}
                       </td>
 
                       <td style={{ padding: '0.85rem 1rem', fontFamily: 'monospace', fontSize: '0.76rem', color: '#64748b' }}>

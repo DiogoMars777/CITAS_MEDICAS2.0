@@ -11,6 +11,8 @@ import {
   CheckCircle2,
   Sparkles,
   Layers,
+  Search,
+  UserCheck,
 } from 'lucide-react';
 import { getInitialReservaFormState } from '../../../models/PKG05_GestionCitasConcurrencia/CU10_ReservarCita/CitaModel';
 import { API_ENDPOINTS } from '@/config/api';
@@ -28,6 +30,10 @@ export const ModalReservarCita = ({
   const [formData, setFormData] = useState(getInitialReservaFormState());
   const [localError, setLocalError] = useState(null);
 
+  // Buscador de paciente por carnet (CI) para recepcionista
+  const [pacienteSearch, setPacienteSearch] = useState('');
+  const [showPacienteDropdown, setShowPacienteDropdown] = useState(false);
+
   // Slots dinámicos disponibles para el médico y fecha seleccionados
   const [availableSlots, setAvailableSlots] = useState([]);
   const [proximosDias, setProximosDias] = useState([]);
@@ -43,6 +49,8 @@ export const ModalReservarCita = ({
       }
       setFormData(initial);
       setLocalError(null);
+      setPacienteSearch('');
+      setShowPacienteDropdown(false);
       setAvailableSlots([]);
       setProximosDias([]);
     }
@@ -272,52 +280,219 @@ export const ModalReservarCita = ({
             )}
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-              {/* PACIENTE */}
-              <div style={{ gridColumn: 'span 2' }}>
-                <label style={{ display: 'block', fontSize: '0.78rem', color: '#475569', fontWeight: 600, marginBottom: '4px' }}>
-                  Paciente Afiliado *
-                </label>
-                {currentUser?.id_paciente ? (
-                  <div style={{
-                    padding: '0.6rem 0.85rem',
-                    borderRadius: '8px',
-                    background: '#f0fdf4',
-                    border: '1px solid #bbf7d0',
-                    color: '#166534',
-                    fontSize: '0.86rem',
-                    fontWeight: 700,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                  }}>
-                    <User size={16} color="#16a34a" />
-                    <span>{currentUser.nombre_completo || currentUser.username} (Titular de la cuenta)</span>
+              {/* PACIENTE CON BUSCADOR POR CARNET (CI) / NOMBRE */}
+              {(() => {
+                const pacienteSeleccionado = pacientesMeta.find(
+                  (p) => String(p.id_paciente) === String(formData.id_paciente)
+                );
+                const query = pacienteSearch.toLowerCase().trim();
+                const pacientesFiltrados = pacientesMeta.filter((p) => {
+                  if (!query) return true;
+                  return (
+                    (p.ci || '').toLowerCase().includes(query) ||
+                    (p.nombre_completo || '').toLowerCase().includes(query) ||
+                    (p.numero_expediente || '').toLowerCase().includes(query)
+                  );
+                }).slice(0, 8);
+
+                return (
+                  <div style={{ gridColumn: 'span 2', position: 'relative' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                      <label style={{ fontSize: '0.78rem', color: '#475569', fontWeight: 600 }}>
+                        Paciente Afiliado *
+                      </label>
+                      {!currentUser?.id_paciente && (
+                        <span style={{ fontSize: '0.72rem', color: '#0284c7', fontWeight: 700 }}>
+                          Búsqueda rápida por Carnet (CI) o Nombre
+                        </span>
+                      )}
+                    </div>
+
+                    {currentUser?.id_paciente ? (
+                      <div style={{
+                        padding: '0.6rem 0.85rem',
+                        borderRadius: '8px',
+                        background: '#f0fdf4',
+                        border: '1px solid #bbf7d0',
+                        color: '#166534',
+                        fontSize: '0.86rem',
+                        fontWeight: 700,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                      }}>
+                        <User size={16} color="#16a34a" />
+                        <span>{currentUser.nombre_completo || currentUser.username} (Titular de la cuenta)</span>
+                      </div>
+                    ) : pacienteSeleccionado ? (
+                      <div style={{
+                        padding: '0.65rem 0.9rem',
+                        borderRadius: '10px',
+                        background: '#f0f9ff',
+                        border: '1px solid #bae6fd',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '0.75rem',
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                          <div style={{
+                            width: '36px',
+                            height: '36px',
+                            borderRadius: '8px',
+                            background: '#0284c7',
+                            color: '#ffffff',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}>
+                            <UserCheck size={20} />
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: 800, fontSize: '0.9rem', color: '#0f172a' }}>
+                              {pacienteSeleccionado.nombre_completo}
+                            </div>
+                            <div style={{ fontSize: '0.75rem', color: '#475569', display: 'flex', alignItems: 'center', gap: '8px', marginTop: '1px' }}>
+                              <span style={{
+                                background: '#e0f2fe',
+                                color: '#0369a1',
+                                padding: '1px 6px',
+                                borderRadius: '4px',
+                                fontFamily: 'monospace',
+                                fontWeight: 800,
+                              }}>
+                                CI: {pacienteSeleccionado.ci}
+                              </span>
+                              <span>•</span>
+                              <span>Exp: {pacienteSeleccionado.numero_expediente || 'S/N'}</span>
+                              {pacienteSeleccionado.telefono && (
+                                <>
+                                  <span>•</span>
+                                  <span>Tel: {pacienteSeleccionado.telefono}</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFormData((prev) => ({ ...prev, id_paciente: '' }));
+                            setPacienteSearch('');
+                            setShowPacienteDropdown(true);
+                          }}
+                          style={{
+                            padding: '0.35rem 0.65rem',
+                            borderRadius: '6px',
+                            border: '1px solid #cbd5e1',
+                            background: '#ffffff',
+                            color: '#475569',
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Cambiar paciente
+                        </button>
+                      </div>
+                    ) : (
+                      <div style={{ position: 'relative' }}>
+                        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                          <Search size={16} color="#0284c7" style={{ position: 'absolute', left: '10px' }} />
+                          <input
+                            type="text"
+                            placeholder="Buscar paciente por carnet (CI), nombre o expediente..."
+                            value={pacienteSearch}
+                            onChange={(e) => {
+                              setPacienteSearch(e.target.value);
+                              setShowPacienteDropdown(true);
+                            }}
+                            onFocus={() => setShowPacienteDropdown(true)}
+                            style={{
+                              width: '100%',
+                              padding: '0.6rem 0.75rem 0.6rem 2.25rem',
+                              fontSize: '0.86rem',
+                              borderRadius: '8px',
+                              border: '1px solid #0284c7',
+                              background: '#ffffff',
+                              color: '#0f172a',
+                              outline: 'none',
+                              boxShadow: '0 0 0 2px rgba(2, 132, 199, 0.1)',
+                            }}
+                          />
+                        </div>
+
+                        {showPacienteDropdown && (
+                          <div style={{
+                            position: 'absolute',
+                            top: '100%',
+                            left: 0,
+                            right: 0,
+                            marginTop: '4px',
+                            background: '#ffffff',
+                            border: '1px solid #cbd5e1',
+                            borderRadius: '10px',
+                            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                            maxHeight: '220px',
+                            overflowY: 'auto',
+                            zIndex: 30,
+                          }}>
+                            {pacientesFiltrados.length > 0 ? (
+                              pacientesFiltrados.map((p) => (
+                                <div
+                                  key={p.id_paciente}
+                                  onClick={() => {
+                                    setFormData((prev) => ({ ...prev, id_paciente: String(p.id_paciente) }));
+                                    setShowPacienteDropdown(false);
+                                    setPacienteSearch('');
+                                  }}
+                                  style={{
+                                    padding: '0.6rem 0.85rem',
+                                    borderBottom: '1px solid #f1f5f9',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    transition: 'background 0.12s ease',
+                                  }}
+                                  onMouseEnter={(e) => (e.currentTarget.style.background = '#f0f9ff')}
+                                  onMouseLeave={(e) => (e.currentTarget.style.background = '#ffffff')}
+                                >
+                                  <div>
+                                    <div style={{ fontSize: '0.84rem', fontWeight: 700, color: '#0f172a' }}>
+                                      {p.nombre_completo}
+                                    </div>
+                                    <div style={{ fontSize: '0.74rem', color: '#64748b' }}>
+                                      Exp: {p.numero_expediente || 'N/A'} {p.telefono ? `• Tel: ${p.telefono}` : ''}
+                                    </div>
+                                  </div>
+
+                                  <span style={{
+                                    padding: '3px 8px',
+                                    borderRadius: '6px',
+                                    background: '#e0f2fe',
+                                    color: '#0369a1',
+                                    fontSize: '0.78rem',
+                                    fontWeight: 800,
+                                    fontFamily: 'monospace',
+                                  }}>
+                                    CI: {p.ci}
+                                  </span>
+                                </div>
+                              ))
+                            ) : (
+                              <div style={{ padding: '1rem', textAlign: 'center', color: '#64748b', fontSize: '0.8rem' }}>
+                                No se encontró ningún paciente con el carnet o nombre "{pacienteSearch}"
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                ) : (
-                  <select
-                    value={formData.id_paciente}
-                    onChange={(e) => setFormData({ ...formData, id_paciente: e.target.value })}
-                    required
-                    style={{
-                      width: '100%',
-                      padding: '0.55rem 0.75rem',
-                      fontSize: '0.84rem',
-                      borderRadius: '8px',
-                      border: '1px solid #cbd5e1',
-                      background: '#ffffff',
-                      color: '#0f172a',
-                      outline: 'none',
-                    }}
-                  >
-                    <option value="">Seleccione un paciente por nombre o CI...</option>
-                    {pacientesMeta.map((p) => (
-                      <option key={p.id_paciente} value={p.id_paciente}>
-                        {p.nombre_completo} — CI: {p.ci} (Exp: {p.numero_expediente})
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
+                );
+              })()}
 
               {/* ESPECIALIDAD */}
               <div>

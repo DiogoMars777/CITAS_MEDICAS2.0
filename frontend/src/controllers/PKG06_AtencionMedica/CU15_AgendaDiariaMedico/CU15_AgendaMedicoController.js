@@ -146,6 +146,39 @@ export const useCU15AgendaMedicoController = (initialFecha = null, initialMedico
     return matchesEstado && matchesSearch;
   });
 
+  const registrarInasistencia = async (idCita, observaciones = 'El paciente no se presentó a su consulta en el horario programado.') => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token') || '';
+      const headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const res = await fetch(`${API_ENDPOINTS.asistencia}/${idCita}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({
+          nuevo_estado: 'INASISTENCIA',
+          observaciones,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.success === false) {
+        throw new Error(data.message || 'Error al registrar inasistencia.');
+      }
+
+      await cargarAgenda(fecha, medicoId);
+      return data;
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     fecha,
     medico,
@@ -165,6 +198,7 @@ export const useCU15AgendaMedicoController = (initialFecha = null, initialMedico
     cargarAgenda,
     abrirExpediente,
     cerrarExpediente,
+    registrarInasistencia,
     cambiarFecha,
     avanzarDia,
     retrocederDia,

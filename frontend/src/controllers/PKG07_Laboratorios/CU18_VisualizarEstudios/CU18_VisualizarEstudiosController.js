@@ -6,7 +6,11 @@ const API_BASE = API_ENDPOINTS.laboratoriosVisor;
 /**
  * Controller Hook para CU18 - Visualizar y descargar resultados de laboratorio
  */
-export const useCU18VisualizarEstudiosController = () => {
+export const useCU18VisualizarEstudiosController = (currentUser = null) => {
+  const isMedico = ['MEDICO', 'DOCTOR'].includes((currentUser?.rol || '').toUpperCase().trim());
+  const isPaciente = ['PACIENTE', 'CLIENTE'].includes((currentUser?.rol || '').toUpperCase().trim());
+  const defaultRol = isPaciente ? 'PACIENTE' : 'MEDICO';
+
   const [estudios, setEstudios] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -14,7 +18,12 @@ export const useCU18VisualizarEstudiosController = () => {
   // Filtros
   const [filtroEstado, setFiltroEstado] = useState('TODOS'); // 'TODOS' | 'HABILITADO' | 'PENDIENTE'
   const [searchTerm, setSearchTerm] = useState('');
-  const [filtroRol, setFiltroRol] = useState('MEDICO'); // 'MEDICO' | 'PACIENTE'
+  const [filtroRol, setFiltroRol] = useState(defaultRol); // 'MEDICO' | 'PACIENTE'
+
+  useEffect(() => {
+    if (isMedico) setFiltroRol('MEDICO');
+    else if (isPaciente) setFiltroRol('PACIENTE');
+  }, [isMedico, isPaciente]);
 
   // Modal de visualización y detalle
   const [estudioDetalle, setEstudioDetalle] = useState(null);
@@ -28,11 +37,17 @@ export const useCU18VisualizarEstudiosController = () => {
     setLoading(true);
     setError(null);
     try {
+      const headers = { Accept: 'application/json' };
+      const token = currentUser?.token || localStorage.getItem('token');
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       let url = `${API_BASE}?`;
       if (filtroEstado !== 'TODOS') url += `estado=${filtroEstado}&`;
       if (searchTerm.trim()) url += `search=${encodeURIComponent(searchTerm.trim())}&`;
+      if (isMedico && currentUser?.id_medico) url += `id_medico=${currentUser.id_medico}&`;
+      if (isPaciente && currentUser?.id_paciente) url += `id_paciente=${currentUser.id_paciente}&`;
 
-      const res = await fetch(url, { headers: { Accept: 'application/json' } });
+      const res = await fetch(url, { headers });
       const data = await res.json();
 
       if (!res.ok || data.status !== 'success') {
@@ -45,7 +60,7 @@ export const useCU18VisualizarEstudiosController = () => {
     } finally {
       setLoading(false);
     }
-  }, [filtroEstado, searchTerm]);
+  }, [filtroEstado, searchTerm, isMedico, isPaciente, currentUser?.id_medico, currentUser?.id_paciente, currentUser?.token]);
 
   useEffect(() => {
     cargarEstudios();

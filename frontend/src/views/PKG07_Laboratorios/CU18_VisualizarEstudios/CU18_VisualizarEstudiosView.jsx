@@ -20,7 +20,10 @@ import {
 } from 'lucide-react';
 import { useCU18VisualizarEstudiosController } from '../../../controllers/PKG07_Laboratorios/CU18_VisualizarEstudios/CU18_VisualizarEstudiosController';
 
-export const CU18_VisualizarEstudiosView = () => {
+export const CU18_VisualizarEstudiosView = ({ currentUser = null }) => {
+  const isMedico = ['MEDICO', 'DOCTOR'].includes((currentUser?.rol || '').toUpperCase().trim());
+  const isPaciente = ['PACIENTE', 'CLIENTE'].includes((currentUser?.rol || '').toUpperCase().trim());
+
   const {
     estudios,
     loading,
@@ -38,7 +41,7 @@ export const CU18_VisualizarEstudiosView = () => {
     cerrarModalDetalle,
     descargarPdf,
     cargarEstudios,
-  } = useCU18VisualizarEstudiosController();
+  } = useCU18VisualizarEstudiosController(currentUser);
 
   return (
     <div style={{ padding: '0.5rem 1rem 3rem', maxWidth: '1440px', margin: '0 auto', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
@@ -94,51 +97,85 @@ export const CU18_VisualizarEstudiosView = () => {
           </div>
         </div>
 
-        {/* SELECTOR DE PERSPECTIVA (MÉDICO VS PACIENTE) */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#f1f5f9', padding: '4px', borderRadius: '8px' }}>
-          <button
-            type="button"
-            onClick={() => setFiltroRol('MEDICO')}
-            style={{
-              padding: '0.4rem 0.85rem',
-              borderRadius: '6px',
-              border: 'none',
-              background: filtroRol === 'MEDICO' ? '#ffffff' : 'transparent',
-              color: filtroRol === 'MEDICO' ? '#0284c7' : '#64748b',
-              fontWeight: 700,
-              fontSize: '0.78rem',
-              cursor: 'pointer',
-              boxShadow: filtroRol === 'MEDICO' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.35rem',
-            }}
-          >
-            <Stethoscope size={14} />
-            Vista Médico Tratante
-          </button>
-          <button
-            type="button"
-            onClick={() => setFiltroRol('PACIENTE')}
-            style={{
-              padding: '0.4rem 0.85rem',
-              borderRadius: '6px',
-              border: 'none',
-              background: filtroRol === 'PACIENTE' ? '#ffffff' : 'transparent',
-              color: filtroRol === 'PACIENTE' ? '#0284c7' : '#64748b',
-              fontWeight: 700,
-              fontSize: '0.78rem',
-              cursor: 'pointer',
-              boxShadow: filtroRol === 'PACIENTE' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.35rem',
-            }}
-          >
-            <User size={14} />
-            Portal del Paciente
-          </button>
-        </div>
+        {/* SELECTOR DE PERSPECTIVA O BADGE FIJO SEGÚN ROL */}
+        {isMedico ? (
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.45rem',
+            background: '#eff6ff',
+            color: '#1d4ed8',
+            border: '1px solid #bfdbfe',
+            padding: '0.4rem 0.85rem',
+            borderRadius: '8px',
+            fontWeight: 700,
+            fontSize: '0.78rem',
+          }}>
+            <Stethoscope size={15} />
+            <span>Vista Médico Tratante</span>
+          </div>
+        ) : isPaciente ? (
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.45rem',
+            background: '#f0fdf4',
+            color: '#166534',
+            border: '1px solid #bbf7d0',
+            padding: '0.4rem 0.85rem',
+            borderRadius: '8px',
+            fontWeight: 700,
+            fontSize: '0.78rem',
+          }}>
+            <User size={15} />
+            <span>Portal del Paciente</span>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#f1f5f9', padding: '4px', borderRadius: '8px' }}>
+            <button
+              type="button"
+              onClick={() => setFiltroRol('MEDICO')}
+              style={{
+                padding: '0.4rem 0.85rem',
+                borderRadius: '6px',
+                border: 'none',
+                background: filtroRol === 'MEDICO' ? '#ffffff' : 'transparent',
+                color: filtroRol === 'MEDICO' ? '#0284c7' : '#64748b',
+                fontWeight: 700,
+                fontSize: '0.78rem',
+                cursor: 'pointer',
+                boxShadow: filtroRol === 'MEDICO' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+              }}
+            >
+              <Stethoscope size={14} />
+              Vista Médico Tratante
+            </button>
+            <button
+              type="button"
+              onClick={() => setFiltroRol('PACIENTE')}
+              style={{
+                padding: '0.4rem 0.85rem',
+                borderRadius: '6px',
+                border: 'none',
+                background: filtroRol === 'PACIENTE' ? '#ffffff' : 'transparent',
+                color: filtroRol === 'PACIENTE' ? '#0284c7' : '#64748b',
+                fontWeight: 700,
+                fontSize: '0.78rem',
+                cursor: 'pointer',
+                boxShadow: filtroRol === 'PACIENTE' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+              }}
+            >
+              <User size={14} />
+              Portal del Paciente
+            </button>
+          </div>
+        )}
       </div>
 
       {/* 2. FILTROS Y BÚSQUEDA */}

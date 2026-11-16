@@ -68,19 +68,37 @@ class CU02_BitacoraAuditoriaController extends Controller
                       ->orderBy('id_bitacora', 'desc')
                       ->paginate($perPage);
 
-        // Mapear logs con fecha boliviana y rol del usuario
+        // Mapear logs con fecha boliviana, rol del usuario y nombre de la persona
         $logs->getCollection()->transform(function ($log) {
             $rolNombre = 'SISTEMA';
+            $personaNombre = null;
+
             if ($log->usuario) {
                 $rolNombre = DB::table('roles')->where('id_rol', $log->usuario->id_rol)->value('nombre_rol') ?? 'USUARIO';
+
+                $medico = DB::table('medicos')->where('id_usuario', $log->usuario->id_usuario)->first();
+                if ($medico) {
+                    $personaNombre = "Dr(a). {$medico->nombres} {$medico->apellidos}";
+                } else {
+                    $paciente = DB::table('pacientes')->where('id_usuario', $log->usuario->id_usuario)->first();
+                    if ($paciente) {
+                        $personaNombre = "{$paciente->nombres} {$paciente->apellidos}";
+                    }
+                }
             }
 
             return [
                 'id_bitacora'          => $log->id_bitacora,
                 'id_usuario'           => $log->id_usuario,
                 'usuario'              => $log->usuario ? $log->usuario->username : 'Sistema / Anónimo',
+                'usuario_nombre'       => $personaNombre ?: ($log->usuario ? $log->usuario->username : 'Sistema'),
                 'usuario_email'        => $log->usuario ? $log->usuario->email : null,
-                'rol'                  => $rolNombre,
+                'rol'                  => strtoupper($rolNombre),
+                'usuario_responsable'  => [
+                    'username' => $log->usuario ? $log->usuario->username : 'Sistema',
+                    'nombre'   => $personaNombre ?: ($log->usuario ? $log->usuario->username : 'Sistema / Anónimo'),
+                    'rol'      => strtoupper($rolNombre),
+                ],
                 'modulo'               => $log->modulo,
                 'tabla_afectada'       => $log->tabla_afectada,
                 'id_registro_afectado' => $log->id_registro_afectado,
@@ -121,8 +139,18 @@ class CU02_BitacoraAuditoriaController extends Controller
         }
 
         $rolNombre = 'SISTEMA';
+        $personaNombre = null;
         if ($log->usuario) {
             $rolNombre = DB::table('roles')->where('id_rol', $log->usuario->id_rol)->value('nombre_rol') ?? 'USUARIO';
+            $medico = DB::table('medicos')->where('id_usuario', $log->usuario->id_usuario)->first();
+            if ($medico) {
+                $personaNombre = "Dr(a). {$medico->nombres} {$medico->apellidos}";
+            } else {
+                $paciente = DB::table('pacientes')->where('id_usuario', $log->usuario->id_usuario)->first();
+                if ($paciente) {
+                    $personaNombre = "{$paciente->nombres} {$paciente->apellidos}";
+                }
+            }
         }
 
         return response()->json([
@@ -130,7 +158,13 @@ class CU02_BitacoraAuditoriaController extends Controller
             'data'   => [
                 'id_bitacora'          => $log->id_bitacora,
                 'usuario'              => $log->usuario ? $log->usuario->username : 'Sistema / Anónimo',
-                'rol'                  => $rolNombre,
+                'usuario_nombre'       => $personaNombre ?: ($log->usuario ? $log->usuario->username : 'Sistema'),
+                'rol'                  => strtoupper($rolNombre),
+                'usuario_responsable'  => [
+                    'username' => $log->usuario ? $log->usuario->username : 'Sistema',
+                    'nombre'   => $personaNombre ?: ($log->usuario ? $log->usuario->username : 'Sistema / Anónimo'),
+                    'rol'      => strtoupper($rolNombre),
+                ],
                 'modulo'               => $log->modulo,
                 'tabla_afectada'       => $log->tabla_afectada,
                 'id_registro_afectado' => $log->id_registro_afectado,

@@ -196,14 +196,16 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
         Route::middleware('role:ADMINISTRADOR,RECEPCIONISTA')->group(function () {
             Route::patch('/{id}/estado', [CU10_ReservaCitaController::class, 'cambiarEstado']);
+        });
+        Route::middleware('role:ADMINISTRADOR,RECEPCIONISTA,MEDICO')->group(function () {
             Route::patch('/{id}/asistencia', [CU13_AsistenciaController::class, 'registrarAsistencia']);
         });
     });
 
     // CU13: Asistencia
-    Route::prefix('asistencia')->middleware('role:ADMINISTRADOR,RECEPCIONISTA')->group(function () {
-        Route::get('/', [CU13_AsistenciaController::class, 'index']);
-        Route::patch('/{id}', [CU13_AsistenciaController::class, 'registrarAsistencia']);
+    Route::prefix('asistencia')->group(function () {
+        Route::get('/', [CU13_AsistenciaController::class, 'index'])->middleware('role:ADMINISTRADOR,RECEPCIONISTA');
+        Route::patch('/{id}', [CU13_AsistenciaController::class, 'registrarAsistencia'])->middleware('role:ADMINISTRADOR,RECEPCIONISTA,MEDICO');
     });
 
     // CU23: Pagos

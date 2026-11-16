@@ -63,8 +63,10 @@ class CU15_AgendaMedicoController extends Controller
             'canceladas'    => $citas->whereIn('estado_cita', ['CANCELADA', 'INASISTENCIA'])->count(),
         ];
 
+        $hoyBolivia = Carbon::now('America/La_Paz')->toDateString();
+
         // Mapeo detallado con cálculo de edad y formateo
-        $citasFormateadas = $citas->map(function ($cita) {
+        $citasFormateadas = $citas->map(function ($cita) use ($hoyBolivia) {
             $paciente = $cita->paciente;
             $historia = $paciente ? $paciente->historiaClinica : null;
             $contacto = $paciente ? $paciente->contactoEmergencia : null;
@@ -75,10 +77,18 @@ class CU15_AgendaMedicoController extends Controller
                 && strtoupper(trim((string)$alergias)) !== 'NO'
                 && strtoupper(trim((string)$alergias)) !== 'NEGATIVO';
 
+            $fechaCitaStr = $cita->fecha_cita ? Carbon::parse($cita->fecha_cita)->toDateString() : null;
+            $esHoy = ($fechaCitaStr === $hoyBolivia);
+            $esExpirada = ($fechaCitaStr !== null && $fechaCitaStr < $hoyBolivia);
+            $esFutura = ($fechaCitaStr !== null && $fechaCitaStr > $hoyBolivia);
+
             return [
                 'id_cita'         => $cita->id_cita,
                 'codigo_cita'     => $cita->codigo_cita,
-                'fecha_cita'      => $cita->fecha_cita ? Carbon::parse($cita->fecha_cita)->toDateString() : null,
+                'fecha_cita'      => $fechaCitaStr,
+                'es_hoy'          => $esHoy,
+                'es_expirada'     => $esExpirada,
+                'es_futura'       => $esFutura,
                 'hora_inicio'     => substr((string)$cita->hora_inicio, 0, 5),
                 'hora_fin'        => substr((string)$cita->hora_fin, 0, 5),
                 'duracion_min'    => 15,

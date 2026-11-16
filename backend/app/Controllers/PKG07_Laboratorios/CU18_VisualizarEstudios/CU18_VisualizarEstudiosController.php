@@ -71,13 +71,29 @@ class CU18_VisualizarEstudiosController extends Controller
         try {
             $query = LaboratorioEstudioConsulta::with(['paciente', 'medico', 'cita']);
 
-            // Si se filtra por paciente
-            if ($request->filled('id_paciente')) {
+            // Aislamiento estricto de privacidad según rol autenticado
+            $user = $request->user();
+            if ($user) {
+                if ($user->esMedico()) {
+                    $medico = $user->medico;
+                    if ($medico) {
+                        $query->where('id_medico_solicitante', $medico->id_medico);
+                    }
+                } elseif ($user->esPaciente()) {
+                    $paciente = $user->paciente;
+                    if ($paciente) {
+                        $query->where('id_paciente', $paciente->id_paciente);
+                    }
+                }
+            }
+
+            // Si se filtra por paciente (solo si no es médico con pacientes acotados)
+            if ($request->filled('id_paciente') && (!$user || !$user->esPaciente())) {
                 $query->where('id_paciente', $request->query('id_paciente'));
             }
 
-            // Si se filtra por médico
-            if ($request->filled('id_medico')) {
+            // Si se filtra por médico (solo si no está ya acotado a otro médico)
+            if ($request->filled('id_medico') && (!$user || !$user->esMedico())) {
                 $query->where('id_medico_solicitante', $request->query('id_medico'));
             }
 

@@ -24,6 +24,7 @@ import {
   X,
   ArrowRight,
   Lock,
+  UserX,
 } from 'lucide-react';
 import { useCU15AgendaMedicoController } from '../../../controllers/PKG06_AtencionMedica/CU15_AgendaDiariaMedico/CU15_AgendaMedicoController';
 
@@ -46,6 +47,7 @@ export const CU15_AgendaMedicoView = ({ onNavigateToCU16 }) => {
     securityViolation,
     abrirExpediente,
     cerrarExpediente,
+    registrarInasistencia,
     cambiarFecha,
     avanzarDia,
     retrocederDia,
@@ -548,6 +550,20 @@ export const CU15_AgendaMedicoView = ({ onNavigateToCU16 }) => {
                   const BadgeIcon = badge.icon;
                   const tieneAlergias = item.historia_clinica?.tiene_alergias;
 
+                  const hoyStr = new Date().toISOString().split('T')[0];
+                  const esFechaHoy = (fecha === hoyStr);
+                  const esTerminal = ['ATENDIDA', 'CANCELADA', 'INASISTENCIA'].includes(item.estado_cita);
+                  const fueraDeHorario = !esFechaHoy || item.es_expirada || item.es_futura;
+                  const puedeMarcarInasistencia = !esTerminal && ['PROGRAMADA', 'CONFIRMADA', 'EN_ESPERA'].includes(item.estado_cita);
+                  const esAtendida = item.estado_cita === 'ATENDIDA';
+                  const puedeAtender = item.esta_pagada && !esTerminal && esFechaHoy && !item.es_expirada && !item.es_futura;
+
+                  let motivoBloqueo = null;
+                  if (!item.esta_pagada) motivoBloqueo = 'Pago pendiente: Atención bloqueada';
+                  else if (item.estado_cita === 'CANCELADA') motivoBloqueo = 'Cita cancelada';
+                  else if (item.estado_cita === 'INASISTENCIA') motivoBloqueo = 'Inasistencia registrada: Cita cerrada';
+                  else if (fueraDeHorario) motivoBloqueo = item.es_expirada ? 'Cita expirada (Fecha pasada)' : 'Fuera de fecha/horario de hoy';
+
                   return (
                     <tr
                       key={item.id_cita}
@@ -732,55 +748,89 @@ export const CU15_AgendaMedicoView = ({ onNavigateToCU16 }) => {
                             <span>Expediente</span>
                           </button>
 
+                          {/* BOTÓN REGISTRAR INASISTENCIA (NO LLEGÓ) */}
+                          {puedeMarcarInasistencia && (
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                const conf = window.confirm(
+                                  `¿Confirmar inasistencia del paciente ${item.paciente?.nombre_completo || ''}?\n\nAl registrar inasistencia, la cita quedará cerrada y ya no podrá ser atendida.`
+                                );
+                                if (conf) {
+                                  try {
+                                    await registrarInasistencia(item.id_cita, 'El paciente no se presentó en su horario de turno.');
+                                  } catch (err) {
+                                    alert(err.message || 'Error al registrar inasistencia.');
+                                  }
+                                }
+                              }}
+                              style={{
+                                padding: '0.45rem 0.75rem',
+                                borderRadius: '8px',
+                                border: '1px solid #fecaca',
+                                background: '#fef2f2',
+                                color: '#dc2626',
+                                fontSize: '0.74rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                transition: 'all 0.15s ease',
+                              }}
+                              title="Registrar inasistencia (No se presentó al turno)"
+                            >
+                              <UserX size={13} />
+                              <span>No llegó</span>
+                            </button>
+                          )}
+
                           {/* ATENDER CONSULTA (CONDUCE A CU16) */}
                           <button
+                            type="button"
                             onClick={() => {
-                              if (item.estado_cita === 'CANCELADA') {
-                                alert('Esta cita ha sido cancelada.');
-                                return;
-                              }
-                              if (!item.esta_pagada) {
-                                alert('Atención bloqueada: El paciente debe cancelar el monto de la cita al menos 24 horas antes de su horario asignado.');
+                              if (motivoBloqueo && !esAtendida) {
+                                alert(`Atención no permitida: ${motivoBloqueo}`);
                                 return;
                               }
                               if (onNavigateToCU16) {
                                 onNavigateToCU16(item.id_cita);
                               }
                             }}
-                            disabled={!item.esta_pagada || item.estado_cita === 'CANCELADA'}
+                            disabled={!puedeAtender && !esAtendida}
                             style={{
                               padding: '0.45rem 0.85rem',
                               borderRadius: '8px',
                               border: '1px solid',
-                              background: (!item.esta_pagada || item.estado_cita === 'CANCELADA')
+                              background: (!puedeAtender && !esAtendida)
                                 ? '#f1f5f9'
-                                : item.estado_cita === 'ATENDIDA'
+                                : esAtendida
                                 ? '#f0fdf4'
                                 : '#0284c7',
-                              color: (!item.esta_pagada || item.estado_cita === 'CANCELADA')
+                              color: (!puedeAtender && !esAtendida)
                                 ? '#94a3b8'
-                                : item.estado_cita === 'ATENDIDA'
+                                : esAtendida
                                 ? '#16a34a'
                                 : '#ffffff',
-                              borderColor: (!item.esta_pagada || item.estado_cita === 'CANCELADA')
+                              borderColor: (!puedeAtender && !esAtendida)
                                 ? '#e2e8f0'
-                                : item.estado_cita === 'ATENDIDA'
+                                : esAtendida
                                 ? '#bbf7d0'
                                 : '#0284c7',
                               fontSize: '0.76rem',
                               fontWeight: 700,
-                              cursor: (!item.esta_pagada || item.estado_cita === 'CANCELADA') ? 'not-allowed' : 'pointer',
+                              cursor: (!puedeAtender && !esAtendida) ? 'not-allowed' : 'pointer',
                               display: 'flex',
                               alignItems: 'center',
                               gap: '4px',
-                              boxShadow: (item.esta_pagada && item.estado_cita !== 'ATENDIDA' && item.estado_cita !== 'CANCELADA')
+                              boxShadow: (puedeAtender && !esAtendida)
                                 ? '0 2px 6px rgba(2, 132, 199, 0.3)'
                                 : 'none',
                             }}
-                            title={!item.esta_pagada ? "Cita impaga: atención bloqueada" : "Atender consulta según turno"}
+                            title={motivoBloqueo && !esAtendida ? motivoBloqueo : esAtendida ? 'Ver detalles de consulta realizada' : 'Atender consulta según turno'}
                           >
                             <Stethoscope size={14} />
-                            <span>{item.estado_cita === 'ATENDIDA' ? 'Ver Consulta' : 'Atender (CU16)'}</span>
+                            <span>{esAtendida ? 'Ver Consulta' : 'Atender (CU16)'}</span>
                             <ArrowRight size={13} />
                           </button>
                         </div>
