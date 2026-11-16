@@ -37,15 +37,16 @@ export const ModalReservarCita = ({
   useEffect(() => {
     if (isOpen) {
       const initial = getInitialReservaFormState();
-      if (currentUser?.id_paciente) {
-        initial.id_paciente = String(currentUser.id_paciente);
+      const idPac = currentUser?.id_paciente || (pacientesMeta?.length === 1 ? pacientesMeta[0].id_paciente : '');
+      if (idPac) {
+        initial.id_paciente = String(idPac);
       }
       setFormData(initial);
       setLocalError(null);
       setAvailableSlots([]);
       setProximosDias([]);
     }
-  }, [isOpen, currentUser]);
+  }, [isOpen, currentUser, pacientesMeta]);
 
   // Filtrar médicos según especialidad seleccionada
   const filteredMedicos = formData.id_especialidad
@@ -118,7 +119,12 @@ export const ModalReservarCita = ({
     e.preventDefault();
     setLocalError(null);
 
-    if (!formData.id_paciente) {
+    let idPac = formData.id_paciente;
+    if (!idPac && (currentUser?.id_paciente || pacientesMeta?.[0]?.id_paciente)) {
+      idPac = String(currentUser?.id_paciente || pacientesMeta?.[0]?.id_paciente);
+    }
+
+    if (!idPac) {
       setLocalError('Por favor seleccione un paciente.');
       return;
     }
@@ -143,9 +149,14 @@ export const ModalReservarCita = ({
       return;
     }
 
-    const res = await onSave(formData);
-    if (!res.success) {
-      setLocalError(res.message);
+    try {
+      const payload = { ...formData, id_paciente: idPac };
+      const res = await onSave(payload);
+      if (res && !res.success) {
+        setLocalError(res.message || 'Error al procesar la reserva.');
+      }
+    } catch (err) {
+      setLocalError(err.message || 'Error al procesar la reserva.');
     }
   };
 

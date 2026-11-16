@@ -160,7 +160,7 @@ export const ModalFichaCita = ({
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.65rem', fontSize: '0.84rem' }}>
               <div>
                 <span style={{ color: '#64748b', display: 'block', fontSize: '0.72rem', fontWeight: 500 }}>Especialidad</span>
-                <strong style={{ color: '#0f172a' }}>{cita.especialidad_nombre}</strong>
+                <strong style={{ color: '#0f172a' }}>{cita.especialidad_nombre || cita.especialidad || 'Consulta Médica'}</strong>
               </div>
               <div>
                 <span style={{ color: '#64748b', display: 'block', fontSize: '0.72rem', fontWeight: 500 }}>Médico Asignado</span>
@@ -181,7 +181,7 @@ export const ModalFichaCita = ({
               <div style={{ gridColumn: 'span 2' }}>
                 <span style={{ color: '#64748b', display: 'block', fontSize: '0.72rem', fontWeight: 500 }}>Motivo de Consulta</span>
                 <div style={{ color: '#334155', fontSize: '0.82rem', fontStyle: 'italic', marginTop: '2px' }}>
-                  "{cita.motivo_consulta}"
+                  "{cita.motivo_consulta || 'Consulta médica programada'}"
                 </div>
               </div>
             </div>

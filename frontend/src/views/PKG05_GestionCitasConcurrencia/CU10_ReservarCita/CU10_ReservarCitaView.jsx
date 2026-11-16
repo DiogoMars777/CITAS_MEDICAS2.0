@@ -100,10 +100,12 @@ export const CU10_ReservarCitaView = ({ currentUser = null }) => {
       id_cita: cita.id_cita,
       codigo_cita: cita.codigo_cita,
       paciente_nombre: cita.paciente_nombre,
-      especialidad: cita.especialidad_nombre,
+      especialidad: cita.especialidad_nombre || cita.especialidad || 'Consulta Médica',
       fecha_cita: cita.fecha_cita,
-      hora_inicio: cita.horario_rango?.split(' - ')[0] || '08:00',
-      tarifa_sugerida: 150.0,
+      hora_inicio: cita.hora_inicio || cita.horario_rango?.split(' - ')[0] || '08:00',
+      tarifa_sugerida: cita.tarifa_sugerida || 150.0,
+      created_at: cita.created_at || cita.fecha_creacion,
+      fecha_creacion: cita.created_at || cita.fecha_creacion,
     });
     setModalPagoOpen(true);
   };

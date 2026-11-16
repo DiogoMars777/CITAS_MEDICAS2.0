@@ -31,6 +31,14 @@ class Usuario extends Authenticatable
     ];
 
     /**
+     * Nombre descriptivo del usuario
+     */
+    public function getNombreCompletoAttribute(): string
+    {
+        return $this->username ?? 'Usuario';
+    }
+
+    /**
      * Get the password for authentication.
      */
     public function getAuthPassword(): string

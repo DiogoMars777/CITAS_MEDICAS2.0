@@ -143,7 +143,8 @@ export const useCU10ReservaCitaController = (currentUser = null) => {
       const data = await res.json();
 
       if (!res.ok || !data.success) {
-        throw new Error(data.message || 'Error al procesar la reserva de cita.');
+        const errorMsg = data.message || data.error || (data.errors ? Object.values(data.errors).flat().join(', ') : 'Error al procesar la reserva de cita.');
+        throw new Error(errorMsg);
       }
 
       setSuccessMsg(`¡Cita médica ${data.data.codigo_cita} agendada con éxito!`);
@@ -155,10 +156,10 @@ export const useCU10ReservaCitaController = (currentUser = null) => {
 
       // Recargar citas
       fetchCitas(pagination.currentPage);
-      return data;
+      return { success: true, data: data.data };
     } catch (err) {
       setError(err.message);
-      throw err;
+      return { success: false, message: err.message };
     } finally {
       setActionLoading(false);
     }
@@ -167,10 +168,27 @@ export const useCU10ReservaCitaController = (currentUser = null) => {
   /**
    * 4. Ver Ficha Médica de la Cita
    */
-  const verFichaCita = async (idCita) => {
+  const verFichaCita = async (citaOrId) => {
+    if (!citaOrId) return;
     setActionLoading(true);
+    setError(null);
+
+    // Precargar inmediatamente si ya contamos con los datos de la fila de la tabla
+    if (typeof citaOrId === 'object' && citaOrId !== null && citaOrId.codigo_cita) {
+      setCitaForFicha(citaOrId);
+      setModalFichaOpen(true);
+    }
+
     try {
-      const res = await fetch(`${API_BASE}/${idCita}`);
+      const id = typeof citaOrId === 'object' && citaOrId !== null
+        ? (citaOrId.id_cita || citaOrId.id)
+        : citaOrId;
+
+      if (!id) {
+        throw new Error('Identificador de cita no válido.');
+      }
+
+      const res = await fetch(`${API_BASE}/${id}`);
       const data = await res.json();
 
       if (!res.ok || !data.success) {
@@ -180,7 +198,10 @@ export const useCU10ReservaCitaController = (currentUser = null) => {
       setCitaForFicha(data.data);
       setModalFichaOpen(true);
     } catch (err) {
-      setError(err.message);
+      // Si ya abrimos con los datos locales, no mostrar error bloqueante
+      if (typeof citaOrId !== 'object' || !citaOrId.codigo_cita) {
+        setError(err.message || 'No se pudo cargar la ficha médica.');
+      }
     } finally {
       setActionLoading(false);
     }

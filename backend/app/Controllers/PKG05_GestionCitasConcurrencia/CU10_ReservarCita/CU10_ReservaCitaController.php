@@ -229,6 +229,15 @@ class CU10_ReservaCitaController extends Controller
      */
     public function store(Request $request, \App\Services\Citas\CitaService $citaService): JsonResponse
     {
+        // Si el usuario autenticado es paciente, garantizar que id_paciente corresponda a su cuenta
+        $user = $request->user();
+        if ($user && $user->esPaciente()) {
+            $pacienteAuth = Paciente::where('id_usuario', $user->id_usuario)->first();
+            if ($pacienteAuth) {
+                $request->merge(['id_paciente' => $pacienteAuth->id_paciente]);
+            }
+        }
+
         $validator = Validator::make($request->all(), [
             'id_paciente'     => 'required|integer',
             'id_medico'       => 'required|integer',
@@ -265,13 +274,20 @@ class CU10_ReservaCitaController extends Controller
                     'horario_rango'          => substr($cita->hora_inicio, 0, 5) . ' - ' . substr($cita->hora_fin, 0, 5),
                     'motivo_consulta'        => $cita->motivo_consulta,
                     'estado_cita'            => $cita->estado_cita,
+                    'paciente_id'            => $cita->id_paciente,
                     'paciente_nombre'        => $pac ? "{$pac->nombres} {$pac->apellidos}" : '',
                     'paciente_ci'            => $pac?->ci,
                     'paciente_telefono'      => $pac?->telefono,
                     'paciente_expediente'    => $pac?->historiaClinica?->numero_expediente ?? 'N/A',
-                    'medico_nombre'          => $med ? "Dr(a). {$med->nombre_completo}" : '',
+                    'medico_id'              => $cita->id_medico,
+                    'medico_nombre'          => $med ? "Dr(a). {$med->nombres} {$med->apellidos}" : '',
                     'matricula_profesional'  => $med?->numero_registro_profesional,
+                    'especialidad_id'        => $cita->id_especialidad,
                     'especialidad_nombre'    => $cita->especialidad?->nombre ?? '',
+                    'especialidad'           => $cita->especialidad?->nombre ?? '',
+                    'fecha_creacion'         => $cita->fecha_creacion,
+                    'created_at'             => $cita->fecha_creacion,
+                    'tarifa_sugerida'        => 150.0,
                     'fecha_emision'          => Carbon::now('America/La_Paz')->format('Y-m-d H:i:s'),
                 ],
             ], 201);
@@ -326,11 +342,15 @@ class CU10_ReservaCitaController extends Controller
                 'paciente_expediente'    => $pac?->historiaClinica?->numero_expediente ?? 'N/A',
                 'paciente_tipo_sangre'   => $pac?->historiaClinica?->tipo_sangre ?? 'No registrado',
                 'medico_id'              => $cita->id_medico,
-                'medico_nombre'          => $med ? "Dr(a). {$med->nombre_completo}" : '',
+                'medico_nombre'          => $med ? "Dr(a). {$med->nombres} {$med->apellidos}" : '',
                 'matricula_profesional'  => $med?->numero_registro_profesional,
+                'especialidad_id'        => $cita->id_especialidad,
                 'especialidad_nombre'    => $cita->especialidad?->nombre ?? '',
-                'creado_por'             => $cita->creador?->nombre_completo ?? 'Sistema',
+                'especialidad'           => $cita->especialidad?->nombre ?? '',
+                'creado_por'             => $cita->creador?->username ?? 'Sistema',
                 'fecha_creacion'         => $cita->fecha_creacion,
+                'created_at'             => $cita->fecha_creacion,
+                'tarifa_sugerida'        => 150.0,
             ],
         ]);
     }
