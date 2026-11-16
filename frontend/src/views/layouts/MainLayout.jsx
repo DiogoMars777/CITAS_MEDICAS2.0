@@ -24,6 +24,7 @@ import {
 } from '../../models/navigation/navigationConfig';
 import { useHoraBoliviana } from '../../controllers/PKG01_Seguridad/CU02_BitacoraAuditoria/CU02_BitacoraAuditoriaController';
 import SeniorCUPlaceholder from '../common/SeniorCUPlaceholder';
+import NotificationCenter from './NotificationCenter';
 
 // Lazy loading para optimizar el bundle inicial y code-splitting modular
 const CU02_BitacoraView = lazy(() => import('../PKG01_Seguridad/CU02_BitacoraAuditoria/CU02_BitacoraView'));
@@ -489,6 +490,15 @@ export const MainLayout = ({ currentUser, onLogout }) => {
               <span>{horaBolivia.time}</span>
               <span style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 500 }}>(BOT)</span>
             </div>
+
+            {/* CENTRO DE NOTIFICACIONES CLÍNICAS */}
+            <NotificationCenter
+              currentUser={currentUser}
+              onNavigateToCU={(cuId, pkgId) => {
+                setActiveCUId(cuId);
+                setExpandedPackages((prev) => ({ ...prev, [pkgId]: true }));
+              }}
+            />
 
             {/* USUARIO PILL */}
             <div style={{

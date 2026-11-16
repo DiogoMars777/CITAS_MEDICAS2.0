@@ -119,7 +119,8 @@ class CitaService
         try {
             return DB::transaction(function () use (
                 $idPaciente, $idMedico, $idEspecialidad, $fechaCita,
-                $horaInicio, $horaFin, $motivoConsulta, $user
+                $horaInicio, $horaFin, $motivoConsulta, $user,
+                $medico, $paciente
             ) {
                 $horaIniFull = $horaInicio . ':00';
                 $horaFinFull = $horaFin . ':00';
@@ -196,6 +197,23 @@ class CitaService
                     'estado_reserva'   => 'PENDIENTE',
                 ]);
 
+                // Notificación de Reserva Exitosa al Paciente (CU19)
+                try {
+                    $medicoNombre = $medico->nombre_completo;
+                    $pacienteNombre = $paciente->nombres;
+                    \App\Models\PKG08_DashboardReportes\CU19_Recordatorios\Recordatorio::create([
+                        'id_cita'          => $cita->id_cita,
+                        'tipo_canal'       => 'WHATSAPP',
+                        'fecha_programada' => $nowBolivia,
+                        'fecha_envio'      => $nowBolivia,
+                        'estado_envio'     => 'ENVIADO',
+                        'intentos'         => 1,
+                        'mensaje'          => "¡Reserva Exitosa! Estimado(a) {$pacienteNombre}, su cita #{$codigoCita} fue agendada para el {$fechaCita} ({$horaInicio} - {$horaFin}) con el Dr(a). {$medicoNombre}. Dispone de 1 hora (60 min) para realizar el pago y confirmar su consulta.",
+                    ]);
+                } catch (\Throwable $ne) {
+                    Log::warning('Error al generar notificación de reserva: ' . $ne->getMessage());
+                }
+
                 // Auditoría
                 try {
                     BitacoraAuditoria::registrar(
@@ -238,10 +256,13 @@ class CitaService
     {
         $cita = Cita::with(['paciente', 'medico', 'especialidad'])->findOrFail($idCita);
 
-        // 1. Estados terminales: no se puede reprogramar si está cancelada o atendida
+        // 1. Estados terminales: no se puede reprogramar si ya fue atendida o inasistencia
         $estadoActual = strtoupper(trim($cita->estado_cita));
-        if (in_array($estadoActual, ['CANCELADA', 'ATENDIDA', 'INASISTENCIA'], true)) {
-            throw new HttpException(422, "No se puede reprogramar una cita que se encuentra en estado terminal '{$estadoActual}'.");
+        if (in_array($estadoActual, ['ATENDIDA', 'INASISTENCIA'], true)) {
+            throw new HttpException(422, "No se puede reprogramar una cita que se encuentra en estado final '{$estadoActual}'.");
+        }
+        if ($estadoActual === 'CANCELADA' && !$cita->estaPagada()) {
+            throw new HttpException(422, "No se puede reprogramar una cita cancelada que no cuenta con pago confirmado.");
         }
 
         // 2. Política de Pago: La cita debe estar pagada para permitir reprogramación
@@ -307,7 +328,8 @@ class CitaService
         try {
             return DB::transaction(function () use (
                 $cita, $fechaNueva, $horaIniNueva, $horaFinNueva,
-                $idMedicoNuevo, $motivoReprogramacion, $user
+                $idMedicoNuevo, $motivoReprogramacion, $user,
+                $estadoActual, $medicoNuevo
             ) {
                 $horaIniFull = $horaIniNueva . ':00';
                 $horaFinFull = $horaFinNueva . ':00';
@@ -363,6 +385,10 @@ class CitaService
                 $citaActualizada->hora_inicio = $horaIniFull;
                 $citaActualizada->hora_fin = $horaFinFull;
                 $citaActualizada->id_medico = $idMedicoNuevo;
+                // Si la cita estaba cancelada y pagada, se reactiva con su nuevo horario
+                if ($estadoActual === 'CANCELADA') {
+                    $citaActualizada->estado_cita = 'CONFIRMADA';
+                }
                 $citaActualizada->fecha_actualizacion = Carbon::now($this->timezone);
                 $citaActualizada->save();
 
@@ -380,6 +406,24 @@ class CitaService
                     'motivo_reprogramacion'  => $motivoReprogramacion,
                     'id_usuario_responsable' => $user?->id_usuario ?? 1,
                 ]);
+
+                // Notificación de Reprogramación al Paciente (CU19)
+                try {
+                    $citaActualizada->load(['paciente', 'medico']);
+                    $pacienteNom = $citaActualizada->paciente?->nombres ?? 'Paciente';
+                    $medicoNom = $medicoNuevo->nombre_completo;
+                    \App\Models\PKG08_DashboardReportes\CU19_Recordatorios\Recordatorio::create([
+                        'id_cita'          => $citaActualizada->id_cita,
+                        'tipo_canal'       => 'WHATSAPP',
+                        'fecha_programada' => Carbon::now($this->timezone),
+                        'fecha_envio'      => Carbon::now($this->timezone),
+                        'estado_envio'     => 'ENVIADO',
+                        'intentos'         => 1,
+                        'mensaje'          => "¡Reprogramación Confirmada! Estimado(a) {$pacienteNom}: Su cita #{$citaActualizada->codigo_cita} fue reprogramada con éxito para el {$fechaNueva} ({$horaIniNueva} - {$horaFinNueva}) con el Dr(a). {$medicoNom}.",
+                    ]);
+                } catch (\Throwable $ne) {
+                    Log::warning('Error creando recordatorio de reprogramación: ' . $ne->getMessage());
+                }
 
                 // Auditoría
                 try {

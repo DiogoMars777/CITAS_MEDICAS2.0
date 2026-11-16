@@ -37,6 +37,7 @@ export const API_ENDPOINTS = {
   laboratoriosCarga: `${API_BASE_URL}/laboratorios/carga`,
   laboratoriosVisor: `${API_BASE_URL}/laboratorios/visor`,
   recordatorios: `${API_BASE_URL}/recordatorios`,
+  notificaciones: `${API_BASE_URL}/notificaciones`,
   dashboard: `${API_BASE_URL}/dashboard`,
   reportes: `${API_BASE_URL}/reportes`,
   iaAsistente: `${API_BASE_URL}/ia-asistente`,

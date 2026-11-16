@@ -220,4 +220,74 @@ class CU19_RecordatorioController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Obtener notificaciones del usuario autenticado (Paciente, Médico o Staff)
+     */
+    public function misNotificaciones(Request $request): JsonResponse
+    {
+        try {
+            $user = $request->user();
+            $query = Recordatorio::with(['cita.paciente', 'cita.medico', 'cita.especialidad']);
+
+            if ($user) {
+                $rol = strtoupper($user->rol?->nombre_rol ?? '');
+                if (in_array($rol, ['PACIENTE', 'CLIENTE'])) {
+                    $paciente = $user->paciente ?? \App\Models\PKG03_PacientesHistorial\CU06_RegistroPaciente\Paciente::where('id_usuario', $user->id_usuario)->first();
+                    if ($paciente) {
+                        $query->whereHas('cita', function ($qc) use ($paciente) {
+                            $qc->where('id_paciente', $paciente->id_paciente);
+                        });
+                    }
+                } elseif ($rol === 'MEDICO') {
+                    $medico = $user->medico ?? \App\Models\PKG02_MedicosEspecialidades\CU05_GestionMedicos\Medico::where('id_usuario', $user->id_usuario)->first();
+                    if ($medico) {
+                        $query->whereHas('cita', function ($qc) use ($medico) {
+                            $qc->where('id_medico', $medico->id_medico);
+                        });
+                    }
+                }
+            }
+
+            $notificaciones = $query->orderBy('id_recordatorio', 'desc')
+                ->take(30)
+                ->get()
+                ->map(function ($r) {
+                    $msg = $r->mensaje;
+                    $tipo = 'GENERAL';
+                    if (str_contains(strtolower($msg), 'emergencia') || str_contains(strtolower($msg), 'bloqueo')) {
+                        $tipo = 'EMERGENCIA';
+                    } elseif (str_contains(strtolower($msg), 'reserva') || str_contains(strtolower($msg), 'agendada')) {
+                        $tipo = 'RESERVA';
+                    } elseif (str_contains(strtolower($msg), 'cancelada') || str_contains(strtolower($msg), 'expiración') || str_contains(strtolower($msg), 'plazo')) {
+                        $tipo = 'CANCELACION';
+                    } elseif (str_contains(strtolower($msg), 'laboratorio')) {
+                        $tipo = 'LABORATORIO';
+                    } elseif (str_contains(strtolower($msg), 'reprogramad')) {
+                        $tipo = 'REPROGRAMACION';
+                    }
+
+                    return [
+                        'id_notificacion' => $r->id_recordatorio,
+                        'id_cita'         => $r->id_cita,
+                        'codigo_cita'     => $r->cita?->codigo_cita ?? 'CITA',
+                        'tipo'            => $tipo,
+                        'mensaje'         => $r->mensaje,
+                        'fecha'           => $r->fecha_envio ? Carbon::parse($r->fecha_envio)->format('Y-m-d H:i') : ($r->fecha_programada ? Carbon::parse($r->fecha_programada)->format('Y-m-d H:i') : null),
+                        'canal'           => $r->tipo_canal,
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'data'    => $notificaciones,
+                'total'   => count($notificaciones),
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener notificaciones: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
 }

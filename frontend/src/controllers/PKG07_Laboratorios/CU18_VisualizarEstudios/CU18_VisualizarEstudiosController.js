@@ -7,8 +7,9 @@ const API_BASE = API_ENDPOINTS.laboratoriosVisor;
  * Controller Hook para CU18 - Visualizar y descargar resultados de laboratorio
  */
 export const useCU18VisualizarEstudiosController = (currentUser = null) => {
-  const isMedico = ['MEDICO', 'DOCTOR'].includes((currentUser?.rol || '').toUpperCase().trim());
-  const isPaciente = ['PACIENTE', 'CLIENTE'].includes((currentUser?.rol || '').toUpperCase().trim());
+  const userRol = ((currentUser?.rol || currentUser?.nombre_rol || '') + '').toUpperCase().trim();
+  const isMedico = userRol.includes('MEDIC') || userRol.includes('DOCTOR');
+  const isPaciente = userRol.includes('PACIENT') || userRol.includes('CLIENT');
   const defaultRol = isPaciente ? 'PACIENTE' : 'MEDICO';
 
   const [estudios, setEstudios] = useState([]);

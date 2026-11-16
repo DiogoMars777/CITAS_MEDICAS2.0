@@ -7,7 +7,8 @@ const API_BASE = API_ENDPOINTS.dashboard;
  * Controller Hook para CU20 - Visualizar Dashboard operativo y administrativo
  */
 export const useCU20DashboardController = (currentUser = null) => {
-  const isMedico = ['MEDICO', 'DOCTOR'].includes((currentUser?.rol || '').toUpperCase().trim());
+  const userRol = ((currentUser?.rol || currentUser?.nombre_rol || '') + '').toUpperCase().trim();
+  const isMedico = userRol.includes('MEDIC') || userRol.includes('DOCTOR');
   const [metricas, setMetricas] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);

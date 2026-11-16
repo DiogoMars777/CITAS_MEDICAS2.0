@@ -152,6 +152,22 @@ class Cita extends Model
                     'id_usuario_responsable' => 1,
                     'fecha_cancelacion'      => $ahora,
                 ]);
+
+                // Notificación al Paciente por vencimiento de plazo de pago (CU19)
+                try {
+                    $pacienteNombre = $cita->paciente?->nombres ?? 'Paciente';
+                    \App\Models\PKG08_DashboardReportes\CU19_Recordatorios\Recordatorio::create([
+                        'id_cita'          => $cita->id_cita,
+                        'tipo_canal'       => 'WHATSAPP',
+                        'fecha_programada' => $ahora,
+                        'fecha_envio'      => $ahora,
+                        'estado_envio'     => 'ENVIADO',
+                        'intentos'         => 1,
+                        'mensaje'          => "Estimado(a) {$pacienteNombre}: Su reserva de cita #{$cita->codigo_cita} fue cancelada automáticamente por expiración del plazo de 1 hora sin registro de pago. Si aún requiere atención médica, reserve un nuevo turno disponible.",
+                    ]);
+                } catch (\Throwable $ne) {
+                    \Illuminate\Support\Facades\Log::warning('Error creando recordatorio de cancelación por falta de pago: ' . $ne->getMessage());
+                }
             });
             $canceladas++;
         }

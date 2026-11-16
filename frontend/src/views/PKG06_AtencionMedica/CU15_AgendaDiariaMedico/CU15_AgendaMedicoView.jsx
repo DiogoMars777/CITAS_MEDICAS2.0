@@ -781,7 +781,7 @@ export const CU15_AgendaMedicoView = ({ onNavigateToCU16 }) => {
                               title="Registrar inasistencia (No se presentó al turno)"
                             >
                               <UserX size={13} />
-                              <span>No llegó</span>
+                              <span>Marcar Inasistencia</span>
                             </button>
                           )}
 
@@ -830,7 +830,7 @@ export const CU15_AgendaMedicoView = ({ onNavigateToCU16 }) => {
                             title={motivoBloqueo && !esAtendida ? motivoBloqueo : esAtendida ? 'Ver detalles de consulta realizada' : 'Atender consulta según turno'}
                           >
                             <Stethoscope size={14} />
-                            <span>{esAtendida ? 'Ver Consulta' : 'Atender (CU16)'}</span>
+                            <span>{esAtendida ? 'Ver Consulta' : !puedeAtender ? 'Atención Bloqueada' : 'Atender (CU16)'}</span>
                             <ArrowRight size={13} />
                           </button>
                         </div>

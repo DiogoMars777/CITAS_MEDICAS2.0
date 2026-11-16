@@ -24,7 +24,8 @@ import {
 import { useCU20DashboardController } from '../../../controllers/PKG08_DashboardReportes/CU20_Dashboard/CU20_DashboardController';
 
 export const CU20_DashboardView = ({ currentUser = null, onNavigateToAgenda, onNavigateToLaboratorios }) => {
-  const isMedico = ['MEDICO', 'DOCTOR'].includes((currentUser?.rol || '').toUpperCase().trim());
+  const userRol = ((currentUser?.rol || currentUser?.nombre_rol || '') + '').toUpperCase().trim();
+  const isMedico = userRol.includes('MEDIC') || userRol.includes('DOCTOR');
 
   const {
     metricas,

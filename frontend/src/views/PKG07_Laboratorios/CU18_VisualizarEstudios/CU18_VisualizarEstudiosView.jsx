@@ -21,8 +21,9 @@ import {
 import { useCU18VisualizarEstudiosController } from '../../../controllers/PKG07_Laboratorios/CU18_VisualizarEstudios/CU18_VisualizarEstudiosController';
 
 export const CU18_VisualizarEstudiosView = ({ currentUser = null }) => {
-  const isMedico = ['MEDICO', 'DOCTOR'].includes((currentUser?.rol || '').toUpperCase().trim());
-  const isPaciente = ['PACIENTE', 'CLIENTE'].includes((currentUser?.rol || '').toUpperCase().trim());
+  const userRol = ((currentUser?.rol || currentUser?.nombre_rol || '') + '').toUpperCase().trim();
+  const isMedico = userRol.includes('MEDIC') || userRol.includes('DOCTOR');
+  const isPaciente = userRol.includes('PACIENT') || userRol.includes('CLIENT');
 
   const {
     estudios,

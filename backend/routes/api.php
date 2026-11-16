@@ -257,7 +257,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/{id}', [CU18_VisualizarEstudiosController::class, 'show']);
     });
 
-    // CU19: Recordatorios
+    // CU19: Recordatorios y Notificaciones del Usuario
+    Route::get('/notificaciones', [CU19_RecordatorioController::class, 'misNotificaciones']);
+
     Route::prefix('recordatorios')->middleware('role:ADMINISTRADOR,RECEPCIONISTA')->group(function () {
         Route::get('/', [CU19_RecordatorioController::class, 'index']);
         Route::post('/escanear-24h', [CU19_RecordatorioController::class, 'escanearProximas24Horas']);

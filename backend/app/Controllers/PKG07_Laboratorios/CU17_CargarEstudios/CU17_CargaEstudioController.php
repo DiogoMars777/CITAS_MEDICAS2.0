@@ -312,9 +312,21 @@ class CU17_CargaEstudioController extends Controller
             $estudio->publicado_en          = Carbon::now('America/La_Paz');
             $estudio->save();
 
+            // Vincular cita reciente del paciente si no tiene una asignada
+            if (!$estudio->id_cita && $estudio->id_paciente) {
+                $citaReciente = \App\Models\PKG05_GestionCitasConcurrencia\CU10_ReservarCita\Cita::where('id_paciente', $estudio->id_paciente)
+                    ->latest('id_cita')
+                    ->first();
+                if ($citaReciente) {
+                    $estudio->id_cita = $citaReciente->id_cita;
+                    $estudio->save();
+                }
+            }
+
             // Notificación al Paciente (CU19)
             if ($estudio->paciente && $estudio->id_cita) {
                 try {
+                    $pacienteNom = $estudio->paciente->nombres ?? 'Paciente';
                     Recordatorio::create([
                         'id_cita'          => $estudio->id_cita,
                         'tipo_canal'       => 'WHATSAPP',
@@ -322,7 +334,7 @@ class CU17_CargaEstudioController extends Controller
                         'fecha_envio'      => Carbon::now('America/La_Paz'),
                         'estado_envio'     => 'ENVIADO',
                         'intentos'         => 1,
-                        'mensaje'          => "Estimado(a) {$estudio->paciente->nombres}: Su resultado de laboratorio '{$estudio->nombre_estudio}' ya se encuentra completado y disponible en el portal web de Clínica Vida Salud.",
+                        'mensaje'          => "LABORATORIO DISPONIBLE: Estimado(a) {$pacienteNom}, sus resultados del estudio '{$estudio->nombre_estudio}' (#{$estudio->codigo_estudio}) ya se encuentran disponibles en su Portal de Paciente (CU18) para visualización y descarga en PDF.",
                     ]);
                 } catch (\Throwable $te) {
                     Log::warning('Recordatorio lab error: ' . $te->getMessage());

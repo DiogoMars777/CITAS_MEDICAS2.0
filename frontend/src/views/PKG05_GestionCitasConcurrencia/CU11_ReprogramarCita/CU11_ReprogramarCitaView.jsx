@@ -249,7 +249,8 @@ export const CU11_ReprogramarCitaView = ({ currentUser = null }) => {
               citas.map((c) => {
                 const st = ESTADOS_CITA[c.estado_cita] || ESTADOS_CITA.PROGRAMADA;
                 const isPaid = Boolean(c.esta_pagada);
-                const canReprogram = ['PROGRAMADA', 'CONFIRMADA'].includes(c.estado_cita) && isPaid;
+                // Si la cita está activa o fue cancelada (por emergencia o clínica) pero ya está pagada, es reprogramable
+                const canReprogram = isPaid || (['ADMINISTRADOR', 'RECEPCIONISTA'].includes(userRole) && ['PROGRAMADA', 'CONFIRMADA'].includes(c.estado_cita));
 
                 return (
                   <tr key={c.id_cita} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.15s ease' }}>

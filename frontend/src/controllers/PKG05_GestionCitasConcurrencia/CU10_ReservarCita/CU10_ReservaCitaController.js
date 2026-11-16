@@ -191,6 +191,7 @@ export const useCU10ReservaCitaController = (currentUser = null) => {
         : citaOrId;
 
       if (!id) {
+        if (typeof citaOrId === 'object' && citaOrId?.codigo_cita) return;
         throw new Error('Identificador de cita no válido.');
       }
 
@@ -198,17 +199,16 @@ export const useCU10ReservaCitaController = (currentUser = null) => {
       if (currentUser?.token) headers['Authorization'] = `Bearer ${currentUser.token}`;
 
       const res = await fetch(`${API_BASE}/${id}`, { headers });
-      const data = await res.json();
-
-      if (!res.ok || !data.success) {
-        throw new Error(data.message || 'No se pudo obtener la ficha médica.');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.data) {
+          setCitaForFicha(data.data);
+          setModalFichaOpen(true);
+        }
       }
-
-      setCitaForFicha(data.data);
-      setModalFichaOpen(true);
     } catch (err) {
-      // Si ya abrimos con los datos locales, no mostrar error bloqueante
-      if (typeof citaOrId !== 'object' || !citaOrId.codigo_cita) {
+      // Si ya abrimos con los datos de la fila, omitir mensaje de error bloqueante
+      if (typeof citaOrId !== 'object' || !citaOrId?.codigo_cita) {
         setError(err.message || 'No se pudo cargar la ficha médica.');
       }
     } finally {
