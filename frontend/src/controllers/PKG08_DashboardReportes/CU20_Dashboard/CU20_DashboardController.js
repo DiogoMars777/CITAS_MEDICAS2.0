@@ -6,15 +6,23 @@ const API_BASE = API_ENDPOINTS.dashboard;
 /**
  * Controller Hook para CU20 - Visualizar Dashboard operativo y administrativo
  */
-export const useCU20DashboardController = () => {
+export const useCU20DashboardController = (currentUser = null) => {
+  const isMedico = ['MEDICO', 'DOCTOR'].includes((currentUser?.rol || '').toUpperCase().trim());
   const [metricas, setMetricas] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   // Filtros
   const [periodo, setPeriodo] = useState('hoy'); // 'hoy' | 'semana' | 'mes'
-  const [rolActivo, setRolActivo] = useState('ADMIN'); // 'ADMIN' | 'MEDICO'
-  const [idMedico, setIdMedico] = useState(1);
+  const [rolActivo, setRolActivo] = useState(isMedico ? 'MEDICO' : 'ADMIN');
+  const [idMedico, setIdMedico] = useState(currentUser?.id_medico || 1);
+
+  useEffect(() => {
+    if (isMedico) {
+      setRolActivo('MEDICO');
+      if (currentUser?.id_medico) setIdMedico(currentUser.id_medico);
+    }
+  }, [isMedico, currentUser?.id_medico]);
 
   /**
    * Cargar métricas actualizadas
@@ -23,8 +31,12 @@ export const useCU20DashboardController = () => {
     setLoading(true);
     setError(null);
     try {
-      const url = `${API_BASE}/metricas?periodo=${periodo}&rol=${rolActivo}&id_medico=${idMedico}`;
-      const res = await fetch(url, { headers: { Accept: 'application/json' } });
+      const headers = { Accept: 'application/json' };
+      if (currentUser?.token) headers['Authorization'] = `Bearer ${currentUser.token}`;
+
+      const rolParam = isMedico ? 'MEDICO' : rolActivo;
+      const url = `${API_BASE}/metricas?periodo=${periodo}&rol=${rolParam}&id_medico=${idMedico}`;
+      const res = await fetch(url, { headers });
       const data = await res.json();
 
       if (!res.ok || data.status !== 'success') {
@@ -37,7 +49,7 @@ export const useCU20DashboardController = () => {
     } finally {
       setLoading(false);
     }
-  }, [periodo, rolActivo, idMedico]);
+  }, [periodo, rolActivo, idMedico, isMedico, currentUser?.token]);
 
   useEffect(() => {
     cargarMetricas();

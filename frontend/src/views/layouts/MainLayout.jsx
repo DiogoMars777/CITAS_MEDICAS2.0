@@ -622,6 +622,7 @@ export const MainLayout = ({ currentUser, onLogout }) => {
 
               {activeCUId === 'CU20' && (
                 <CU20_DashboardView
+                  currentUser={currentUser}
                   onNavigateToAgenda={() => {
                     setActiveCUId('CU15');
                     setExpandedPackages((prev) => ({ ...prev, PKG06: true }));

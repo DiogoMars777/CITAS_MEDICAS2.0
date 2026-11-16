@@ -149,13 +149,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
         });
     });
 
-    // CU07: Turnos
+    // CU07: Turnos (Designación exclusiva del Administrador)
     Route::prefix('turnos')->group(function () {
-        Route::get('/', [CU07_TurnoMedicoController::class, 'index'])->middleware('role:ADMINISTRADOR,RECEPCIONISTA,MEDICO');
-        Route::get('/meta', [CU07_TurnoMedicoController::class, 'meta'])->middleware('role:ADMINISTRADOR,RECEPCIONISTA,MEDICO');
-        Route::get('/medico/{idMedico}/semanal', [CU07_TurnoMedicoController::class, 'agendaSemanalMedico'])->middleware('role:ADMINISTRADOR,RECEPCIONISTA,MEDICO');
-        Route::get('/{id}', [CU07_TurnoMedicoController::class, 'show'])->middleware('role:ADMINISTRADOR,RECEPCIONISTA,MEDICO');
-        Route::middleware('role:ADMINISTRADOR,MEDICO')->group(function () {
+        Route::get('/', [CU07_TurnoMedicoController::class, 'index'])->middleware('role:ADMINISTRADOR');
+        Route::get('/meta', [CU07_TurnoMedicoController::class, 'meta'])->middleware('role:ADMINISTRADOR');
+        Route::get('/medico/{idMedico}/semanal', [CU07_TurnoMedicoController::class, 'agendaSemanalMedico'])->middleware('role:ADMINISTRADOR,RECEPCIONISTA');
+        Route::get('/{id}', [CU07_TurnoMedicoController::class, 'show'])->middleware('role:ADMINISTRADOR');
+        Route::middleware('role:ADMINISTRADOR')->group(function () {
             Route::post('/', [CU07_TurnoMedicoController::class, 'store']);
             Route::put('/{id}', [CU07_TurnoMedicoController::class, 'update']);
             Route::patch('/{id}/estado', [CU07_TurnoMedicoController::class, 'cambiarEstado']);
@@ -163,8 +163,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
         });
     });
 
-    // CU08: Bloqueos
-    Route::prefix('bloqueos')->middleware('role:ADMINISTRADOR,MEDICO,RECEPCIONISTA')->group(function () {
+    // CU08: Bloqueos de Agenda (Exclusivo Administrador y Recepcionista por emergencias)
+    Route::prefix('bloqueos')->middleware('role:ADMINISTRADOR,RECEPCIONISTA')->group(function () {
         Route::get('/', [CU08_BloqueoAgendaController::class, 'index']);
         Route::get('/meta', [CU08_BloqueoAgendaController::class, 'meta']);
         Route::post('/', [CU08_BloqueoAgendaController::class, 'store']);
@@ -176,8 +176,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/meta', [CU09_DisponibilidadController::class, 'meta']);
         Route::get('/', [CU09_DisponibilidadController::class, 'consultar']);
         Route::get('/bloqueos', [CU08_BloqueoAgendaController::class, 'index']);
-        Route::post('/bloqueos', [CU08_BloqueoAgendaController::class, 'store'])->middleware('role:ADMINISTRADOR,MEDICO');
-        Route::delete('/bloqueos/{id}', [CU08_BloqueoAgendaController::class, 'destroy'])->middleware('role:ADMINISTRADOR,MEDICO');
+        Route::post('/bloqueos', [CU08_BloqueoAgendaController::class, 'store'])->middleware('role:ADMINISTRADOR,RECEPCIONISTA');
+        Route::delete('/bloqueos/{id}', [CU08_BloqueoAgendaController::class, 'destroy'])->middleware('role:ADMINISTRADOR,RECEPCIONISTA');
     });
 
     // CU10, CU11, CU12: Citas

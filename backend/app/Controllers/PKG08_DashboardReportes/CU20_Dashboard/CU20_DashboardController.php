@@ -22,8 +22,19 @@ class CU20_DashboardController extends Controller
     {
         try {
             $periodo = strtolower($request->query('periodo', 'hoy')); // 'hoy', 'semana', 'mes'
-            $rol = strtoupper($request->query('rol', 'ADMIN')); // 'ADMIN' o 'MEDICO'
-            $idMedico = $request->query('id_medico', 1);
+            $user = $request->user();
+            $esMedicoUser = false;
+            $idMedico = (int) $request->query('id_medico', 0);
+
+            if ($user && $user->esMedico()) {
+                $esMedicoUser = true;
+                $medicoModel = Medico::where('id_usuario', $user->id_usuario)->first();
+                if ($medicoModel) {
+                    $idMedico = $medicoModel->id_medico;
+                }
+            } elseif ($request->query('rol') === 'MEDICO' && $idMedico > 0) {
+                $esMedicoUser = true;
+            }
 
             $hoy = Carbon::now('America/La_Paz')->toDateString();
 
@@ -39,9 +50,96 @@ class CU20_DashboardController extends Controller
                 $fin = $hoy;
             }
 
-            // ==========================================
-            // 1. MÉTRICAS GENERALES / ADMINISTRATIVAS
-            // ==========================================
+            // =========================================================================
+            // CASO 1: EL USUARIO ES MÉDICO -> RETORNA EXCLUSIVAMENTE SU PROPIO DASHBOARD
+            // =========================================================================
+            if ($esMedicoUser && $idMedico > 0) {
+                $medicoInfo = Medico::with('especialidades')->find($idMedico);
+
+                $queryCitasPeriodo = Cita::with(['paciente', 'especialidad'])
+                    ->where('id_medico', $idMedico)
+                    ->whereBetween('fecha_cita', [$inicio, $fin]);
+
+                $totalPeriodo = (clone $queryCitasPeriodo)->count();
+                $atendidasPeriodo = (clone $queryCitasPeriodo)->where('estado_cita', 'ATENDIDA')->count();
+                $pendientesPeriodo = (clone $queryCitasPeriodo)->whereIn('estado_cita', ['PROGRAMADA', 'CONFIRMADA'])->count();
+                $canceladasPeriodo = (clone $queryCitasPeriodo)->where('estado_cita', 'CANCELADA')->count();
+                $inasistenciasPeriodo = (clone $queryCitasPeriodo)->where('estado_cita', 'INASISTENCIA')->count();
+                $tasaEfectividad = $totalPeriodo > 0 ? round(($atendidasPeriodo / $totalPeriodo) * 100, 1) : 0;
+
+                // Citas de Hoy para el médico
+                $citasHoy = Cita::with(['paciente', 'especialidad'])
+                    ->where('id_medico', $idMedico)
+                    ->where('fecha_cita', $hoy)
+                    ->orderBy('hora_inicio', 'asc')
+                    ->get();
+
+                $totalHoy = $citasHoy->count();
+                $atendidasHoy = $citasHoy->where('estado_cita', 'ATENDIDA')->count();
+                $pendientesHoy = $citasHoy->whereIn('estado_cita', ['PROGRAMADA', 'CONFIRMADA'])->count();
+
+                // Próximo paciente en turno hoy
+                $proximoPaciente = $citasHoy->first(function ($c) {
+                    return in_array($c->estado_cita, ['PROGRAMADA', 'CONFIRMADA']);
+                });
+
+                // Lista de agenda de pacientes del periodo
+                $pacientesLista = (clone $queryCitasPeriodo)
+                    ->orderBy('fecha_cita', 'desc')
+                    ->orderBy('hora_inicio', 'asc')
+                    ->limit(10)
+                    ->get()
+                    ->map(function ($c) {
+                        return [
+                            'id_cita'         => $c->id_cita,
+                            'codigo_cita'     => $c->codigo_cita,
+                            'paciente_nombre' => $c->paciente ? "{$c->paciente->nombres} {$c->paciente->apellidos}" : 'Paciente',
+                            'paciente_ci'     => $c->paciente?->ci ?? '',
+                            'fecha_cita'      => $c->fecha_cita,
+                            'horario'         => substr($c->hora_inicio, 0, 5) . ' - ' . substr($c->hora_fin, 0, 5),
+                            'motivo'          => $c->motivo_consulta,
+                            'estado'          => $c->estado_cita,
+                        ];
+                    });
+
+                return response()->json([
+                    'status' => 'success',
+                    'data'   => [
+                        'rol_activo'     => 'MEDICO',
+                        'periodo'        => $periodo,
+                        'rango_fechas'   => ['inicio' => $inicio, 'fin' => $fin],
+                        'admin_kpis'     => null, // El médico NUNCA ve el dashboard global del administrador
+                        'medico_kpis'    => [
+                            'id_medico'         => $idMedico,
+                            'medico_nombre'     => $medicoInfo ? "Dr(a). {$medicoInfo->nombres} {$medicoInfo->apellidos}" : 'Dr. Médico',
+                            'especialidad'      => $medicoInfo && $medicoInfo->especialidades->isNotEmpty() ? $medicoInfo->especialidades->first()->nombre : 'Medicina General',
+                            'matricula'         => $medicoInfo?->numero_registro_profesional ?? 'N/A',
+                            'total_periodo'     => $totalPeriodo,
+                            'atendidos_periodo' => $atendidasPeriodo,
+                            'pendientes_periodo'=> $pendientesPeriodo,
+                            'canceladas_periodo'=> $canceladasPeriodo,
+                            'inasistencias_periodo' => $inasistenciasPeriodo,
+                            'tasa_efectividad'  => $tasaEfectividad,
+                            'total_hoy'         => $totalHoy,
+                            'atendidos_hoy'     => $atendidasHoy,
+                            'pendientes_hoy'    => $pendientesHoy,
+                            'proximo_paciente'  => $proximoPaciente ? [
+                                'id_cita'  => $proximoPaciente->id_cita,
+                                'paciente' => $proximoPaciente->paciente ? "{$proximoPaciente->paciente->nombres} {$proximoPaciente->paciente->apellidos}" : 'Paciente',
+                                'ci'       => $proximoPaciente->paciente?->ci,
+                                'hora'     => substr($proximoPaciente->hora_inicio, 0, 5) . ' - ' . substr($proximoPaciente->hora_fin, 0, 5),
+                                'motivo'   => $proximoPaciente->motivo_consulta,
+                                'estado'   => $proximoPaciente->estado_cita,
+                            ] : null,
+                            'agenda_pacientes'  => $pacientesLista,
+                        ],
+                    ],
+                ]);
+            }
+
+            // =========================================================================
+            // CASO 2: ADMINISTRADOR / RECEPCIÓN -> DASHBOARD OPERATIVO E INSTITUCIONAL
+            // =========================================================================
             $queryCitas = Cita::whereBetween('fecha_cita', [$inicio, $fin]);
 
             $totalCitas = (clone $queryCitas)->count();
@@ -98,67 +196,35 @@ class CU20_DashboardController extends Controller
             $recordatoriosTotal = Recordatorio::count();
             $recordatoriosEnviados = Recordatorio::where('estado_envio', 'ENVIADO')->count();
 
-            // ==========================================
-            // 2. MÉTRICAS ESPECÍFICAS DE MÉDICO
-            // ==========================================
-            $medicoInfo = Medico::with('especialidades')->find($idMedico);
-
-            $queryCitasMedico = Cita::with(['paciente', 'especialidad'])
-                ->where('id_medico', $idMedico)
-                ->where('fecha_cita', $hoy);
-
-            $citasHoyMedico = (clone $queryCitasMedico)->orderBy('hora_inicio', 'asc')->get();
-            $medicoTotalHoy = $citasHoyMedico->count();
-            $medicoAtendidasHoy = $citasHoyMedico->where('estado_cita', 'ATENDIDA')->count();
-            $medicoPendientesHoy = $citasHoyMedico->whereIn('estado_cita', ['PROGRAMADA', 'CONFIRMADA'])->count();
-
-            // Próximo paciente en espera de turno
-            $proximoPaciente = $citasHoyMedico->first(function ($c) {
-                return in_array($c->estado_cita, ['PROGRAMADA', 'CONFIRMADA']);
-            });
-
             return response()->json([
                 'status' => 'success',
                 'data'   => [
-                    'rol_activo'     => $rol,
+                    'rol_activo'     => 'ADMIN',
                     'periodo'        => $periodo,
                     'rango_fechas'   => ['inicio' => $inicio, 'fin' => $fin],
                     'admin_kpis'     => [
-                        'total_citas'       => $totalCitas,
-                        'atendidas'         => $atendidas,
-                        'canceladas'        => $canceladas,
-                        'programadas'       => $programadas,
-                        'inasistencias'     => $inasistencias,
-                        'tasa_efectividad'  => $tasaEfectividad,
-                        'tasa_cancelacion'  => $tasaCancelacion,
-                        'medicos_activos'   => Medico::where('estado', 'ACTIVO')->count(),
+                        'total_citas'            => $totalCitas,
+                        'atendidas'              => $atendidas,
+                        'canceladas'             => $canceladas,
+                        'programadas'            => $programadas,
+                        'inasistencias'          => $inasistencias,
+                        'tasa_efectividad'       => $tasaEfectividad,
+                        'tasa_cancelacion'       => $tasaCancelacion,
+                        'medicos_activos'        => Medico::where('estado', 'ACTIVO')->count(),
                         'especialidades_activas' => Especialidad::where('estado', 'ACTIVO')->count(),
-                        'laboratorios'      => [
+                        'laboratorios'           => [
                             'total'       => $labTotal,
                             'completados' => $labCompletados,
                             'pendientes'  => $labPendientes,
                         ],
-                        'recordatorios'     => [
+                        'recordatorios'          => [
                             'total'    => $recordatoriosTotal,
                             'enviados' => $recordatoriosEnviados,
                         ],
                         'demanda_especialidades' => $demandaEspecialidades,
                         'medicos_volumen'        => $medicosVolumen,
                     ],
-                    'medico_kpis'    => [
-                        'medico_nombre'    => $medicoInfo ? "Dr(a). {$medicoInfo->nombres} {$medicoInfo->apellidos}" : 'Dr. Médico',
-                        'especialidad'     => $medicoInfo && $medicoInfo->especialidades->isNotEmpty() ? $medicoInfo->especialidades->first()->nombre : 'Medicina General',
-                        'total_hoy'        => $medicoTotalHoy,
-                        'atendidos_hoy'    => $medicoAtendidasHoy,
-                        'pendientes_hoy'   => $medicoPendientesHoy,
-                        'proximo_paciente' => $proximoPaciente ? [
-                            'id_cita'  => $proximoPaciente->id_cita,
-                            'paciente' => $proximoPaciente->paciente ? "{$proximoPaciente->paciente->nombres} {$proximoPaciente->paciente->apellidos}" : 'Paciente',
-                            'hora'     => "{$proximoPaciente->hora_inicio} - {$proximoPaciente->hora_fin}",
-                            'motivo'   => $proximoPaciente->motivo_consulta,
-                            'estado'   => $proximoPaciente->estado_cita,
-                        ] : null,
-                    ],
+                    'medico_kpis'    => null,
                 ],
             ]);
         } catch (\Throwable $e) {

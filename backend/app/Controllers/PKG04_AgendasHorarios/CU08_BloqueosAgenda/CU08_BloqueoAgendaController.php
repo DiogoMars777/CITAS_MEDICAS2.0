@@ -91,7 +91,7 @@ class CU08_BloqueoAgendaController extends Controller
             'fecha_fin'    => 'required|date_format:Y-m-d|after_or_equal:fecha_inicio',
             'hora_inicio'  => 'required|date_format:H:i',
             'hora_fin'     => 'required|date_format:H:i',
-            'tipo_bloqueo' => 'required|string|in:PERMISO,CAPACITACION,CIRUGIA,VACACIONES,ADMINISTRATIVO',
+            'tipo_bloqueo' => 'required|string|in:EMERGENCIA,PERMISO,CAPACITACION,CIRUGIA,VACACIONES,ADMINISTRATIVO',
             'motivo'       => 'required|string|min:3|max:255',
         ]);
 
@@ -129,6 +129,47 @@ class CU08_BloqueoAgendaController extends Controller
 
         $bloqueo->load(['medico', 'creador']);
 
+        // Cancelar citas afectadas por emergencia y enviar señal de reprogramación al paciente
+        $citasAfectadas = \App\Models\PKG05_GestionCitasConcurrencia\CU10_ReservarCita\Cita::with(['paciente', 'medico'])
+            ->where('id_medico', (int) $request->input('id_medico'))
+            ->whereBetween('fecha_cita', [$request->input('fecha_inicio'), $request->input('fecha_fin')])
+            ->whereNotIn('estado_cita', ['CANCELADA', 'ATENDIDA', 'INASISTENCIA'])
+            ->where('hora_inicio', '<', $horaFin)
+            ->where('hora_fin', '>', $horaInicio)
+            ->get();
+
+        $citasCanceladasCount = 0;
+
+        foreach ($citasAfectadas as $citaAfectada) {
+            \Illuminate\Support\Facades\DB::transaction(function () use ($citaAfectada, $bloqueo, $usuarioId, $ahoraBolivia, &$citasCanceladasCount) {
+                // Cancelar la cita por emergencia
+                $citaAfectada->estado_cita = 'CANCELADA';
+                $citaAfectada->save();
+
+                \App\Models\PKG05_GestionCitasConcurrencia\CU12_CancelarCita\CancelacionCita::create([
+                    'id_cita'                => $citaAfectada->id_cita,
+                    'motivo_cancelacion'     => "Cancelación por bloqueo de agenda ({$bloqueo->tipo_bloqueo}): {$bloqueo->motivo}",
+                    'id_usuario_responsable' => $usuarioId,
+                    'fecha_cancelacion'      => $ahoraBolivia,
+                ]);
+
+                // Generar recordatorio / señal al paciente para que reprograme
+                $pacienteNombre = $citaAfectada->paciente?->nombres ?? 'Paciente';
+                $medicoNombre = $citaAfectada->medico?->nombre_completo ?? 'Médico Tratante';
+                \App\Models\PKG08_DashboardReportes\CU19_Recordatorios\Recordatorio::create([
+                    'id_cita'          => $citaAfectada->id_cita,
+                    'tipo_canal'       => 'WHATSAPP',
+                    'fecha_programada' => $ahoraBolivia,
+                    'fecha_envio'      => $ahoraBolivia,
+                    'estado_envio'     => 'ENVIADO',
+                    'intentos'         => 1,
+                    'mensaje'          => "Estimado(a) {$pacienteNombre}: Por motivo de bloqueo/emergencia médica ({$bloqueo->motivo}), su cita del {$citaAfectada->fecha_cita} ({$citaAfectada->hora_inicio}) con el Dr(a). {$medicoNombre} ha sido cancelada. Ingrese a su portal de paciente para reprogramar su turno prioritariamente sin costo adicional.",
+                ]);
+
+                $citasCanceladasCount++;
+            });
+        }
+
         // Registrar en bitácora de auditoría
         BitacoraAuditoria::registrar(
             'PKG04_AgendasHorarios',
@@ -137,21 +178,28 @@ class CU08_BloqueoAgendaController extends Controller
             'INSERT',
             null,
             [
-                'medico'       => $bloqueo->medico?->nombre_completo,
-                'tipo_bloqueo' => $bloqueo->tipo_bloqueo,
-                'periodo'      => "{$bloqueo->fecha_inicio} al {$bloqueo->fecha_fin}",
-                'horario'      => "{$bloqueo->hora_inicio} - {$bloqueo->hora_fin}",
-                'motivo'       => $bloqueo->motivo,
+                'medico'           => $bloqueo->medico?->nombre_completo,
+                'tipo_bloqueo'     => $bloqueo->tipo_bloqueo,
+                'periodo'          => "{$bloqueo->fecha_inicio} al {$bloqueo->fecha_fin}",
+                'horario'          => "{$bloqueo->hora_inicio} - {$bloqueo->hora_fin}",
+                'motivo'           => $bloqueo->motivo,
+                'citas_canceladas' => $citasCanceladasCount,
             ],
             $usuarioId,
             $request->ip(),
             $request->userAgent()
         );
 
+        $mensajeRespuesta = "Bloqueo de agenda médica registrado exitosamente para el médico {$bloqueo->medico?->nombre_completo}.";
+        if ($citasCanceladasCount > 0) {
+            $mensajeRespuesta .= " Se cancelaron {$citasCanceladasCount} cita(s) activas por emergencia y se enviaron las alertas para reprogramación a los pacientes.";
+        }
+
         return response()->json([
-            'success' => true,
-            'message' => "Bloqueo de agenda médica registrado exitosamente para el médico {$bloqueo->medico?->nombre_completo}.",
-            'data'    => $bloqueo,
+            'success'                 => true,
+            'message'                 => $mensajeRespuesta,
+            'data'                    => $bloqueo,
+            'citas_canceladas_count' => $citasCanceladasCount,
         ], 201);
     }
 
@@ -215,7 +263,7 @@ class CU08_BloqueoAgendaController extends Controller
         return response()->json([
             'success'        => true,
             'medicos'        => $medicos,
-            'tipos_bloqueo'  => ['PERMISO', 'CAPACITACION', 'CIRUGIA', 'VACACIONES', 'ADMINISTRATIVO'],
+            'tipos_bloqueo'  => ['EMERGENCIA', 'PERMISO', 'CIRUGIA', 'CAPACITACION', 'VACACIONES', 'ADMINISTRATIVO'],
         ]);
     }
 }

@@ -102,7 +102,7 @@ export const CU07_TurnosView = () => {
             Configurar Turnos y Fraccionamiento de Agenda
           </h1>
           <p style={{ margin: '0.25rem 0 0', color: '#64748b', fontSize: '0.875rem' }}>
-            Actor(es): Administrador, Médico • Configuración de turnos semanales y generación estandarizada de bloques de consulta de 15 minutos.
+            Actor(es): Administrador • Asignación y configuración exclusiva de turnos semanales y fraccionamiento de bloques de consulta de 15 minutos.
           </p>
         </div>
 

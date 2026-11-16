@@ -37,7 +37,7 @@ export const CU08_BloqueosView = () => {
     fecha_fin: new Date().toISOString().split('T')[0],
     hora_inicio: '08:00',
     hora_fin: '12:00',
-    tipo_bloqueo: 'PERMISO',
+    tipo_bloqueo: 'EMERGENCIA',
     motivo: '',
   });
 
@@ -104,7 +104,7 @@ export const CU08_BloqueosView = () => {
         fecha_fin: new Date().toISOString().split('T')[0],
         hora_inicio: '08:00',
         hora_fin: '12:00',
-        tipo_bloqueo: 'PERMISO',
+        tipo_bloqueo: 'EMERGENCIA',
         motivo: '',
       });
       await fetchBloqueos();
@@ -172,7 +172,7 @@ export const CU08_BloqueosView = () => {
             Registrar Bloqueos de Agenda Médica
           </h1>
           <p style={{ margin: '0.25rem 0 0', color: '#64748b', fontSize: '0.875rem' }}>
-            Actor(es): Administrador, Médico • Bloqueo administrativo de horarios por permisos, cirugías o capacitaciones
+            Actor(es): Administrador, Recepcionista • Cancelación de horarios por emergencias médicas y notificación a pacientes para reprogramar
           </p>
         </div>
 
@@ -545,6 +545,27 @@ export const CU08_BloqueosView = () => {
             </div>
 
             <form onSubmit={handleCrearBloqueo} style={{ padding: '1.5rem', color: '#0f172a' }}>
+              <div
+                style={{
+                  marginBottom: '1rem',
+                  padding: '0.75rem 0.9rem',
+                  borderRadius: '8px',
+                  background: '#eff6ff',
+                  border: '1px solid #bfdbfe',
+                  fontSize: '0.78rem',
+                  color: '#1e40af',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '0.5rem',
+                  lineHeight: '1.4',
+                }}
+              >
+                <AlertCircle size={16} style={{ flexShrink: 0, marginTop: '2px', color: '#2563eb' }} />
+                <div>
+                  <strong>Cancelación y Señal de Reprogramación:</strong> Al registrar un bloqueo (especialmente por <em>EMERGENCIA</em>), las citas activas que coincidan en este rango serán canceladas inmediatamente y se enviará una notificación a cada paciente para que reprogramen su consulta.
+                </div>
+              </div>
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div style={{ gridColumn: 'span 2' }}>
                   <label style={{ display: 'block', fontSize: '0.78rem', color: '#475569', fontWeight: 600, marginBottom: '4px' }}>

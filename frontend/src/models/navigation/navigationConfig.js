@@ -146,7 +146,7 @@ export const PACKAGES_CONFIG = [
         codigo: 'CU07_ConfigurarTurnos',
         numero: 'CU07',
         titulo: 'Configurar turnos y fraccionamiento de agenda',
-        actores: 'Administrador, Médico',
+        actores: 'Administrador',
         descripcion: 'Definición de turnos laborables y fraccionamiento automático en bloques de 15 minutos.',
         estado: 'activo',
         tablas: ['turnos_medicos'],
@@ -157,10 +157,10 @@ export const PACKAGES_CONFIG = [
         codigo: 'CU08_BloqueosAgenda',
         numero: 'CU08',
         titulo: 'Registrar bloqueos de agenda médica',
-        actores: 'Administrador, Médico',
-        descripcion: 'Bloqueo temporal de rangos horarios por permisos, cirugías o capacitaciones.',
+        actores: 'Administrador, Recepcionista',
+        descripcion: 'Cancelación y bloqueo de horarios por emergencias médicas y notificación para reprogramación.',
         estado: 'activo',
-        tablas: ['bloqueos_agenda', 'medicos'],
+        tablas: ['bloqueos_agenda', 'medicos', 'citas', 'recordatorios'],
         controlador: 'CU08_BloqueoAgendaController',
       },
       {
@@ -422,18 +422,16 @@ export const ROLE_PERMISSIONS = {
     defaultCU: 'CU15', // Visualizar agenda médica diaria
     allowedCUs: [
       'CU01', // Iniciar y cerrar sesión
-      'CU07', // Configurar turnos y fraccionamiento de agenda
-      'CU08', // Registrar bloqueos de agenda médica
       'CU14', // Registrar y actualizar antecedentes clínicos base
       'CU15', // Visualizar agenda médica diaria
       'CU16', // Atender consulta y registrar evolución clínica
       'CU18', // Visualizar y descargar resultados de laboratorio
-      'CU20', // Visualizar Dashboard operativo y administrativo
+      'CU20', // Visualizar Dashboard del médico tratante
     ],
     badgeColor: '#059669',
     badgeBg: '#ecfdf5',
     badgeBorder: '#a7f3d0',
-    descripcion: 'Atención médica, turnos, bloqueos, evolución clínica y expediente del paciente.',
+    descripcion: 'Atención médica, agenda diaria, evolución clínica y métricas de su propia consulta.',
   },
   RECEPCIONISTA: {
     nombre: 'Recepción y Atención al Paciente',
@@ -442,6 +440,7 @@ export const ROLE_PERMISSIONS = {
     allowedCUs: [
       'CU01', // Iniciar y cerrar sesión
       'CU06', // Registrar paciente y apertura en primera visita
+      'CU08', // Registrar bloqueos de agenda médica por emergencias
       'CU09', // Consultar disponibilidad de horarios médicos
       'CU10', // Reservar cita médica con control de concurrencia
       'CU11', // Reprogramar cita médica
