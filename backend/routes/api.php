@@ -216,11 +216,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('/verificar-paypal', [CU23_GestionarPagosController::class, 'checkoutPayPal']);
         Route::post('/simular-paypal', [CU23_GestionarPagosController::class, 'checkoutPayPal']);
 
-        Route::middleware('role:ADMINISTRADOR,RECEPCIONISTA')->group(function () {
+        Route::middleware('role:ADMINISTRADOR,RECEPCIONISTA,PACIENTE')->group(function () {
             Route::get('/', [CU23_GestionarPagosController::class, 'index']);
             Route::get('/pendientes', [CU23_GestionarPagosController::class, 'pendientes']);
-            Route::get('/resumen-caja', [CU23_GestionarPagosController::class, 'resumenCaja']);
         });
+        Route::get('/resumen-caja', [CU23_GestionarPagosController::class, 'resumenCaja'])->middleware('role:ADMINISTRADOR,RECEPCIONISTA');
     });
 
     // CU14: Antecedentes Clínicos

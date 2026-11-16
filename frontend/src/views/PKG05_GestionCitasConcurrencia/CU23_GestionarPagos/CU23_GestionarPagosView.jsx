@@ -54,7 +54,41 @@ export const CU23_GestionarPagosView = ({ currentUser }) => {
     cargarDatos,
   } = useGestionarPagos(currentUser);
 
-  const isPaciente = ['PACIENTE', 'CLIENTE'].includes(currentUser?.rol?.toUpperCase?.());
+  const isPaciente = ['PACIENTE', 'CLIENTE'].includes((currentUser?.rol || '').toUpperCase().trim());
+
+  // Cálculo de tiempo restante de la regla de pago de 1 hora para reservas
+  const calcularPlazoPago = (cita) => {
+    const origen = cita.created_at || cita.fecha_creacion;
+    if (!origen) return { texto: 'Plazo 1h activo', expirado: false, minutosRestantes: 60 };
+
+    const creacionMs = new Date(origen).getTime();
+    if (isNaN(creacionMs)) return { texto: 'Plazo 1h activo', expirado: false, minutosRestantes: 60 };
+    const limiteMs = creacionMs + 60 * 60 * 1000;
+    const ahoraMs = Date.now();
+    const diffMs = limiteMs - ahoraMs;
+
+    if (diffMs <= 0) {
+      return { texto: 'Plazo 1h vencido', expirado: true, minutosRestantes: 0 };
+    }
+
+    const mins = Math.floor(diffMs / 60000);
+    const segs = Math.floor((diffMs % 60000) / 1000);
+    return {
+      texto: `${mins}m ${segs < 10 ? '0' : ''}${segs}s`,
+      expirado: false,
+      minutosRestantes: mins,
+    };
+  };
+
+  // Regla de Visibilidad: Paciente solo puede ver sus propias reservas y pagos; Recepción y Admin ven de todos
+  const idPacienteActual = currentUser?.id_paciente;
+  const pendientesFiltradas = isPaciente && idPacienteActual
+    ? pendientesList.filter((c) => c.id_paciente === idPacienteActual)
+    : pendientesList;
+
+  const pagosFiltrados = isPaciente && idPacienteActual
+    ? pagosList.filter((p) => p.id_paciente === idPacienteActual)
+    : pagosList;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', color: '#0f172a' }}>
@@ -149,6 +183,46 @@ export const CU23_GestionarPagosView = ({ currentUser }) => {
           <span>Actualizar Caja</span>
         </button>
       </div>
+
+      {/* BANNER REGLA DE PAGO 1 HORA PARA EL PACIENTE */}
+      {isPaciente && (
+        <div
+          style={{
+            background: 'linear-gradient(135deg, #eff6ff 0%, #e0f2fe 100%)',
+            border: '1px solid #bae6fd',
+            borderRadius: '12px',
+            padding: '0.85rem 1.25rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
+            boxShadow: '0 2px 5px rgba(2, 132, 199, 0.06)',
+          }}
+        >
+          <div
+            style={{
+              width: '38px',
+              height: '38px',
+              borderRadius: '10px',
+              background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+              color: '#ffffff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
+            <Clock size={20} />
+          </div>
+          <div>
+            <div style={{ fontSize: '0.86rem', fontWeight: 800, color: '#0369a1' }}>
+              Plazo de Pago de Reserva: Tienes 1 hora (60 minutos) para pagar tu reserva
+            </div>
+            <div style={{ fontSize: '0.76rem', color: '#334155', marginTop: '2px', lineHeight: 1.4 }}>
+              Estimado paciente: a partir de la emisión de su reserva médica dispone de <strong>60 minutos</strong> para efectuar el pago en línea (QR Simple, Tarjeta de Débito/Crédito o PayPal). Al pagar, su cita quedará asegurada y confirmada en el sistema.
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MENSAJES DE ALERTA O ÉXITO */}
       {successMsg && (
@@ -354,7 +428,7 @@ export const CU23_GestionarPagosView = ({ currentUser }) => {
               }}
             >
               <Clock size={15} />
-              <span>Citas Pendientes de Pago ({pendientesList.length})</span>
+              <span>Citas Pendientes de Pago ({pendientesFiltradas.length})</span>
             </button>
 
             <button
@@ -420,7 +494,7 @@ export const CU23_GestionarPagosView = ({ currentUser }) => {
                 </tr>
               </thead>
               <tbody>
-                {pendientesList.length === 0 ? (
+                {pendientesFiltradas.length === 0 ? (
                   <tr>
                     <td colSpan={6} style={{ padding: '2.5rem', textAlign: 'center', color: '#94a3b8' }}>
                       <CheckCircle size={32} color="#22c55e" style={{ margin: '0 auto 0.5rem' }} />
@@ -429,7 +503,7 @@ export const CU23_GestionarPagosView = ({ currentUser }) => {
                     </td>
                   </tr>
                 ) : (
-                  pendientesList.map((cita) => (
+                  pendientesFiltradas.map((cita) => (
                     <tr
                       key={cita.id_cita}
                       style={{
@@ -472,32 +546,103 @@ export const CU23_GestionarPagosView = ({ currentUser }) => {
                             fontSize: '0.76rem',
                           }}
                         >
-                          Bs. {cita.tarifa_sugerida.toFixed(2)}
+                          Bs. {parseFloat(cita.tarifa_sugerida || 0).toFixed(2)}
                         </span>
+
+                        {isPaciente && (() => {
+                          const plazo = calcularPlazoPago(cita);
+                          return (
+                            <div style={{ marginTop: '4px' }}>
+                              <span
+                                style={{
+                                  fontSize: '0.68rem',
+                                  fontWeight: 800,
+                                  padding: '2px 6px',
+                                  borderRadius: '4px',
+                                  background: plazo.expirado ? '#fef2f2' : '#fffbeb',
+                                  color: plazo.expirado ? '#ef4444' : '#b45309',
+                                  border: `1px solid ${plazo.expirado ? '#fecaca' : '#fde68a'}`,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '3px',
+                                }}
+                              >
+                                <Clock size={10} />
+                                {plazo.texto}
+                              </span>
+                            </div>
+                          );
+                        })()}
                       </td>
 
                       <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
-                        <button
-                          type="button"
-                          onClick={() => abrirCobro(cita)}
-                          style={{
-                            padding: '0.45rem 0.9rem',
-                            borderRadius: '8px',
-                            border: 'none',
-                            background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
-                            color: '#ffffff',
-                            fontSize: '0.74rem',
-                            fontWeight: 800,
-                            cursor: 'pointer',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '0.35rem',
-                            boxShadow: '0 2px 4px rgba(2, 132, 199, 0.2)',
-                          }}
-                        >
-                          <CreditCard size={14} />
-                          <span>Cobrar Cita</span>
-                        </button>
+                        {isPaciente ? (() => {
+                          const plazo = calcularPlazoPago(cita);
+                          return !plazo.expirado ? (
+                            <button
+                              type="button"
+                              onClick={() => abrirCobro(cita)}
+                              title="Pagar mi reserva médica (Plazo de 1 hora)"
+                              style={{
+                                padding: '0.45rem 0.9rem',
+                                borderRadius: '8px',
+                                border: 'none',
+                                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                color: '#ffffff',
+                                fontSize: '0.74rem',
+                                fontWeight: 800,
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.35rem',
+                                boxShadow: '0 2px 6px rgba(16, 185, 129, 0.3)',
+                              }}
+                            >
+                              <CreditCard size={14} />
+                              <span>Pagar Reserva ({plazo.minutosRestantes}m)</span>
+                            </button>
+                          ) : (
+                            <span
+                              style={{
+                                fontSize: '0.72rem',
+                                color: '#ef4444',
+                                fontWeight: 700,
+                                padding: '4px 8px',
+                                background: '#fef2f2',
+                                border: '1px solid #fecaca',
+                                borderRadius: '6px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                              }}
+                            >
+                              <AlertTriangle size={12} />
+                              Plazo 1h vencido
+                            </span>
+                          );
+                        })() : (
+                          <button
+                            type="button"
+                            onClick={() => abrirCobro(cita)}
+                            style={{
+                              padding: '0.45rem 0.9rem',
+                              borderRadius: '8px',
+                              border: 'none',
+                              background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                              color: '#ffffff',
+                              fontSize: '0.74rem',
+                              fontWeight: 800,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.35rem',
+                              boxShadow: '0 2px 4px rgba(2, 132, 199, 0.2)',
+                            }}
+                          >
+                            <CreditCard size={14} />
+                            <span>Cobrar Cita</span>
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))
@@ -524,7 +669,7 @@ export const CU23_GestionarPagosView = ({ currentUser }) => {
                 </tr>
               </thead>
               <tbody>
-                {pagosList.length === 0 ? (
+                {pagosFiltrados.length === 0 ? (
                   <tr>
                     <td colSpan={8} style={{ padding: '2.5rem', textAlign: 'center', color: '#94a3b8' }}>
                       <FileText size={32} color="#cbd5e1" style={{ margin: '0 auto 0.5rem' }} />
@@ -532,7 +677,7 @@ export const CU23_GestionarPagosView = ({ currentUser }) => {
                     </td>
                   </tr>
                 ) : (
-                  pagosList.map((p) => (
+                  pagosFiltrados.map((p) => (
                     <tr
                       key={p.id_pago}
                       style={{

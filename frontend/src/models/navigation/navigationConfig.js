@@ -391,11 +391,25 @@ export const ROLE_PERMISSIONS = {
   ADMINISTRADOR: {
     nombre: 'Administrador General',
     portalTitle: 'Panel de Administración Global',
-    defaultCU: 'CU20', // Dashboard Ejecutivo
+    defaultCU: 'CU20', // Dashboard Operativo y Administrativo
     allowedCUs: [
-      'CU01', 'CU02', 'CU03', 'CU04', 'CU05', 'CU06', 'CU07', 'CU08',
-      'CU09', 'CU10', 'CU11', 'CU12', 'CU13', 'CU14', 'CU15', 'CU16',
-      'CU17', 'CU18', 'CU19', 'CU20', 'CU21', 'CU22', 'CU23', 'CU24'
+      'CU01', // Iniciar y cerrar sesión
+      'CU02', // Consultar bitácora de auditoría
+      'CU03', // Gestionar usuarios internos, roles y permisos
+      'CU04', // Gestionar especialidades médicas
+      'CU05', // Gestionar médicos y asignación de especialidades
+      'CU06', // Registrar paciente y apertura en primera visita
+      'CU07', // Configurar turnos y fraccionamiento de agenda
+      'CU08', // Registrar bloqueos de agenda médica
+      'CU09', // Consultar disponibilidad de horarios médicos
+      'CU13', // Registrar asistencia e inasistencia
+      'CU15', // Visualizar agenda médica diaria
+      'CU17', // Cargar estudios y resultados de laboratorio
+      'CU19', // Gestionar recordatorios y notificaciones
+      'CU20', // Visualizar Dashboard operativo y administrativo
+      'CU21', // Generar y exportar reportes estadísticos
+      'CU22', // Gestionar copias de seguridad (Backup / Restore)
+      'CU23', // Gestionar pagos y cobranza de citas
     ],
     badgeColor: '#4338ca',
     badgeBg: '#eef2ff',
@@ -405,71 +419,61 @@ export const ROLE_PERMISSIONS = {
   MEDICO: {
     nombre: 'Personal Médico',
     portalTitle: 'Portal Médico y Atención Clínica',
-    defaultCU: 'CU15', // Agenda Médica Diaria
+    defaultCU: 'CU15', // Visualizar agenda médica diaria
     allowedCUs: [
-      'CU15', // Agenda Médica Diaria (Principal)
-      'CU16', // Atender Consulta y Evolución
-      'CU07', // Configurar Turnos Propios
-      'CU08', // Bloqueos de Agenda
-      'CU09', // Consultar Disponibilidad
-      'CU06', // Directorio de Pacientes
-      'CU14', // Antecedentes Clínicos Base
-      'CU18', // Visualizar Resultados de Laboratorio
-      'CU20', // Dashboard Operativo Médico
-      'CU24', // Asistente IA Médico
-      'CU01', // Sesión
+      'CU01', // Iniciar y cerrar sesión
+      'CU07', // Configurar turnos y fraccionamiento de agenda
+      'CU08', // Registrar bloqueos de agenda médica
+      'CU14', // Registrar y actualizar antecedentes clínicos base
+      'CU15', // Visualizar agenda médica diaria
+      'CU16', // Atender consulta y registrar evolución clínica
+      'CU18', // Visualizar y descargar resultados de laboratorio
+      'CU20', // Visualizar Dashboard operativo y administrativo
     ],
     badgeColor: '#059669',
     badgeBg: '#ecfdf5',
     badgeBorder: '#a7f3d0',
-    descripcion: 'Atención de pacientes, evolución clínica, recetas y agenda del día.',
+    descripcion: 'Atención médica, turnos, bloqueos, evolución clínica y expediente del paciente.',
   },
   RECEPCIONISTA: {
     nombre: 'Recepción y Atención al Paciente',
     portalTitle: 'Módulo de Recepción y Citas',
-    defaultCU: 'CU10', // Reservar Citas
+    defaultCU: 'CU10', // Reservar cita médica
     allowedCUs: [
-      'CU10', // Reservar Citas (Principal)
-      'CU11', // Reprogramar Cita
-      'CU12', // Cancelar Cita
-      'CU13', // Control de Asistencia (Sala de Espera)
-      'CU23', // Gestión de Pagos / Cobranza
-      'CU06', // Registro de Paciente (Apertura Ficha)
-      'CU14', // Antecedentes Clínicos Base
-      'CU09', // Consultar Disponibilidad
-      'CU04', // Especialidades Médicas
-      'CU05', // Directorio de Médicos
-      'CU17', // Carga de Resultados de Laboratorio
-      'CU18', // Visualizar Resultados
-      'CU19', // Recordatorios y Notificaciones
-      'CU21', // Reportes Estadísticos de Citas
-      'CU24', // Asistente IA Reserva Rápida
-      'CU01', // Sesión
+      'CU01', // Iniciar y cerrar sesión
+      'CU06', // Registrar paciente y apertura en primera visita
+      'CU09', // Consultar disponibilidad de horarios médicos
+      'CU10', // Reservar cita médica con control de concurrencia
+      'CU11', // Reprogramar cita médica
+      'CU12', // Cancelar cita médica
+      'CU13', // Registrar asistencia e inasistencia
+      'CU14', // Registrar y actualizar antecedentes clínicos base
+      'CU17', // Cargar estudios y resultados de laboratorio
+      'CU23', // Gestionar pagos y cobranza de citas
     ],
     badgeColor: '#0284c7',
     badgeBg: '#e0f2fe',
     badgeBorder: '#bae6fd',
-    descripcion: 'Agendamiento, recepción en sala de espera, cobros y alta de pacientes.',
+    descripcion: 'Registro de pacientes, agenda de citas, asistencia en sala, cobro y laboratorios.',
   },
   PACIENTE: {
-    nombre: 'Portal del Paciente',
-    portalTitle: 'Portal del Paciente - Salud Digital',
-    defaultCU: 'CU10', // Reservar Cita
+    nombre: 'Portal del Paciente (Cliente)',
+    portalTitle: 'Portal del Paciente - Citas y Salud Digital',
+    defaultCU: 'CU10', // Reservar Cita Médica
     allowedCUs: [
-      'CU10', // Reservar Cita (Ticket Digital)
-      'CU11', // Reprogramar mi Cita
-      'CU12', // Cancelar mi Cita
-      'CU09', // Consultar Horarios Disponibles
-      'CU23', // Mis Pagos y Comprobantes
-      'CU14', // Mis Antecedentes y Alergias
-      'CU18', // Mis Resultados de Laboratorio
-      'CU24', // Asistente IA para Reserva por Voz
-      'CU01', // Sesión
+      'CU01', // Iniciar y cerrar sesión
+      'CU09', // Consultar disponibilidad de horarios médicos
+      'CU10', // Reservar cita médica con control de concurrencia
+      'CU11', // Reprogramar cita médica
+      'CU12', // Cancelar cita médica
+      'CU18', // Visualizar y descargar resultados de laboratorio
+      'CU24', // Asistente IA por voz para reserva rápida
+      'CU23', // Pago de reserva médica (plazo de 1 hora)
     ],
     badgeColor: '#d97706',
     badgeBg: '#fef3c7',
     badgeBorder: '#fde68a',
-    descripcion: 'Reserva ágil de citas, consulta de horarios, pagos y descarga de análisis.',
+    descripcion: 'Consulta de horarios, reservas con plazo de pago de 1h, reprogramaciones y resultados.',
   },
 };
 

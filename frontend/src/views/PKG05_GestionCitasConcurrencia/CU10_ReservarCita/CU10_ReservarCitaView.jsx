@@ -70,6 +70,31 @@ export const CU10_ReservarCitaView = ({ currentUser = null }) => {
   const [comprobanteGenerado, setComprobanteGenerado] = React.useState(null);
   const [pagoLoading, setPagoLoading] = React.useState(false);
 
+  const isPaciente = ['PACIENTE', 'CLIENTE'].includes((currentUser?.rol || '').toUpperCase().trim());
+
+  // Cálculo de tiempo restante de la regla de pago de 1 hora para reservas
+  const calcularPlazoPago = (cita) => {
+    const origen = cita.created_at || cita.fecha_creacion;
+    if (!origen) return { texto: '60 min', expirado: false, minutosRestantes: 60 };
+
+    const creacionMs = new Date(origen).getTime();
+    const limiteMs = creacionMs + 60 * 60 * 1000; // 1 hora de plazo
+    const ahoraMs = Date.now();
+    const diffMs = limiteMs - ahoraMs;
+
+    if (diffMs <= 0) {
+      return { texto: 'Plazo expirado (>1h)', expirado: true, minutosRestantes: 0 };
+    }
+
+    const mins = Math.floor(diffMs / 60000);
+    const segs = Math.floor((diffMs % 60000) / 1000);
+    return {
+      texto: `${mins}m ${segs < 10 ? '0' : ''}${segs}s`,
+      expirado: false,
+      minutosRestantes: mins,
+    };
+  };
+
   const handleAbrirCobro = (cita) => {
     setCitaParaPago({
       id_cita: cita.id_cita,
@@ -161,6 +186,44 @@ export const CU10_ReservarCitaView = ({ currentUser = null }) => {
           <span>Nueva Cita Médica</span>
         </button>
       </div>
+
+      {/* BANNER INFORMATIVO: PLAZO DE PAGO DE 1 HORA PARA EL PACIENTE */}
+      {isPaciente && (
+        <div style={{
+          background: 'linear-gradient(135deg, #eff6ff 0%, #e0f2fe 100%)',
+          border: '1px solid #bae6fd',
+          borderRadius: '12px',
+          padding: '0.85rem 1.25rem',
+          marginBottom: '1.25rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.75rem',
+          boxShadow: '0 2px 5px rgba(2, 132, 199, 0.06)',
+        }}>
+          <div style={{
+            width: '38px',
+            height: '38px',
+            borderRadius: '10px',
+            background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+            color: '#ffffff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+            boxShadow: '0 2px 6px rgba(2, 132, 199, 0.25)',
+          }}>
+            <Clock size={20} />
+          </div>
+          <div>
+            <div style={{ fontSize: '0.86rem', fontWeight: 800, color: '#0369a1' }}>
+              Plazo de Pago de Reserva: Tienes 1 hora (60 minutos) para confirmar tu cita
+            </div>
+            <div style={{ fontSize: '0.76rem', color: '#334155', marginTop: '2px', lineHeight: 1.4 }}>
+              Una vez generada tu reserva, dispones de <strong>60 minutos</strong> para efectuar el pago mediante QR Simple o Tarjeta. Al confirmarse el pago, tu cita pasará a estado <strong>CONFIRMADA</strong> y asegurarás tu atención con el médico.
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ALERTAS */}
       {successMsg && (
@@ -546,6 +609,29 @@ export const CU10_ReservarCitaView = ({ currentUser = null }) => {
                           <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: est.text }} />
                           {cita.estado_cita}
                         </span>
+
+                        {cita.estado_cita === 'PROGRAMADA' && (() => {
+                          const plazo = calcularPlazoPago(cita);
+                          return (
+                            <div style={{ marginTop: '4px' }}>
+                              <span style={{
+                                fontSize: '0.68rem',
+                                fontWeight: 800,
+                                padding: '1px 6px',
+                                borderRadius: '4px',
+                                background: plazo.expirado ? '#fef2f2' : '#fffbeb',
+                                color: plazo.expirado ? '#ef4444' : '#b45309',
+                                border: `1px solid ${plazo.expirado ? '#fecaca' : '#fde68a'}`,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '3px',
+                              }}>
+                                <Clock size={10} />
+                                {plazo.expirado ? 'Plazo 1h vencido' : `${plazo.texto} para pagar`}
+                              </span>
+                            </div>
+                          );
+                        })()}
                       </td>
 
                       {/* ACCIONES */}
@@ -571,53 +657,96 @@ export const CU10_ReservarCitaView = ({ currentUser = null }) => {
                             <Printer size={14} />
                           </button>
 
-                          {/* Cobrar / Pagar Cita */}
-                          <button
-                            type="button"
-                            onClick={() => handleAbrirCobro(cita)}
-                            title="Cobrar / Registrar Pago de la Cita"
-                            style={{
-                              background: '#f0fdf4',
-                              border: '1px solid #bbf7d0',
-                              color: '#15803d',
-                              padding: '0.4rem 0.65rem',
-                              borderRadius: '6px',
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              fontSize: '0.74rem',
-                              fontWeight: 700,
-                            }}
-                          >
-                            <CreditCard size={13} />
-                            <span>Cobrar</span>
-                          </button>
+                          {/* Pago o Cobro según Rol */}
+                          {isPaciente ? (
+                            cita.estado_cita === 'PROGRAMADA' ? (
+                              (() => {
+                                const plazo = calcularPlazoPago(cita);
+                                return !plazo.expirado ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleAbrirCobro(cita)}
+                                    title="Pagar mi reserva médica (Plazo de 1 hora)"
+                                    style={{
+                                      background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                      border: 'none',
+                                      color: '#ffffff',
+                                      padding: '0.45rem 0.85rem',
+                                      borderRadius: '8px',
+                                      cursor: 'pointer',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '5px',
+                                      fontSize: '0.75rem',
+                                      fontWeight: 800,
+                                      boxShadow: '0 2px 6px rgba(16, 185, 129, 0.35)',
+                                    }}
+                                  >
+                                    <CreditCard size={14} />
+                                    <span>Pagar Reserva ({plazo.minutosRestantes}m)</span>
+                                  </button>
+                                ) : (
+                                  <span style={{ fontSize: '0.72rem', color: '#ef4444', fontWeight: 700, padding: '4px 8px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px' }}>
+                                    ⚠️ Plazo vencido
+                                  </span>
+                                );
+                              })()
+                            ) : (
+                              <span style={{ fontSize: '0.72rem', color: '#059669', fontWeight: 700, padding: '4px 8px', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '6px' }}>
+                                ✓ Pagada
+                              </span>
+                            )
+                          ) : (
+                            <>
+                              {/* Cobrar Cita (Recepción / Admin) */}
+                              <button
+                                type="button"
+                                onClick={() => handleAbrirCobro(cita)}
+                                title="Cobrar / Registrar Pago de la Cita"
+                                style={{
+                                  background: '#f0fdf4',
+                                  border: '1px solid #bbf7d0',
+                                  color: '#15803d',
+                                  padding: '0.4rem 0.65rem',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  fontSize: '0.74rem',
+                                  fontWeight: 700,
+                                }}
+                              >
+                                <CreditCard size={13} />
+                                <span>Cobrar</span>
+                              </button>
 
-                          {/* Confirmar Asistencia si está PROGRAMADA */}
-                          {cita.estado_cita === 'PROGRAMADA' && (
-                            <button
-                              type="button"
-                              onClick={() => handleCambiarEstado(cita.id_cita, 'CONFIRMADA')}
-                              disabled={actionLoading}
-                              title="Confirmar Cita Médica"
-                              style={{
-                                background: '#ecfdf5',
-                                border: '1px solid #a7f3d0',
-                                color: '#059669',
-                                padding: '0.4rem 0.65rem',
-                                borderRadius: '6px',
-                                cursor: 'pointer',
-                                fontSize: '0.76rem',
-                                fontWeight: 600,
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                              }}
-                            >
-                              <Check size={13} />
-                              <span>Confirmar</span>
-                            </button>
+                              {/* Confirmar Asistencia si está PROGRAMADA */}
+                              {cita.estado_cita === 'PROGRAMADA' && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleCambiarEstado(cita.id_cita, 'CONFIRMADA')}
+                                  disabled={actionLoading}
+                                  title="Confirmar Cita Médica"
+                                  style={{
+                                    background: '#ecfdf5',
+                                    border: '1px solid #a7f3d0',
+                                    color: '#059669',
+                                    padding: '0.4rem 0.65rem',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    fontSize: '0.76rem',
+                                    fontWeight: 600,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                  }}
+                                >
+                                  <Check size={13} />
+                                  <span>Confirmar</span>
+                                </button>
+                              )}
+                            </>
                           )}
                         </div>
                       </td>

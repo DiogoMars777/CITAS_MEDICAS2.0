@@ -165,6 +165,8 @@ class CU23_GestionarPagosService
                 'especialidad'     => $c->especialidad?->nombre ?? 'Consulta Médica',
                 'tarifa_sugerida'  => $tarifa,
                 'moneda'           => 'BOB',
+                'created_at'       => $c->created_at ? $c->created_at->toISOString() : ($c->fecha_creacion ? Carbon::parse($c->fecha_creacion)->toISOString() : null),
+                'fecha_creacion'   => $c->created_at ? $c->created_at->toISOString() : ($c->fecha_creacion ? Carbon::parse($c->fecha_creacion)->toISOString() : null),
             ];
         });
 
@@ -271,6 +273,32 @@ class CU23_GestionarPagosService
                     'success' => false,
                     'error'   => 'No se puede procesar el pago de una cita que ya ha sido cancelada.',
                 ];
+            }
+
+            // Validar restricción para Paciente: solo puede pagar sus propias reservas y dentro del plazo de 1 hora
+            $user = request()->user();
+            if ($user) {
+                $rolNombre = strtoupper($user->rol?->nombre_rol ?? '');
+                if (in_array($rolNombre, ['PACIENTE', 'CLIENTE'])) {
+                    $paciente = Paciente::where('id_usuario', $user->id_usuario)->first();
+                    if (!$paciente || $cita->id_paciente !== $paciente->id_paciente) {
+                        return [
+                            'success' => false,
+                            'error'   => 'Acceso denegado: Un paciente solo puede realizar el pago de sus propias reservas.',
+                        ];
+                    }
+
+                    $creacion = $cita->created_at ?? $cita->fecha_creacion;
+                    if ($creacion) {
+                        $limite = Carbon::parse($creacion)->addMinutes(60);
+                        if (Carbon::now($this->timezone)->greaterThan($limite)) {
+                            return [
+                                'success' => false,
+                                'error'   => 'El plazo máximo de 1 hora para pagar su reserva médica ha expirado.',
+                            ];
+                        }
+                    }
+                }
             }
 
             // Validar que no exista ya un pago completado

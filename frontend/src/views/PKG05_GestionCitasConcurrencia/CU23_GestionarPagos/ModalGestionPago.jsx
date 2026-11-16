@@ -27,7 +27,7 @@ export const ModalGestionPago = ({
   onConfirmarPago,
   loading = false,
 }) => {
-  const isPaciente = currentUser?.rol === 'Paciente' || currentUser?.rol === 'paciente';
+  const isPaciente = ['PACIENTE', 'CLIENTE'].includes((currentUser?.rol || '').toUpperCase().trim());
 
   // Métodos disponibles:
   // Recepcionista: EFECTIVO, QR, TARJETA (3 opciones directas)
