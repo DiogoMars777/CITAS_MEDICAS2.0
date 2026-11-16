@@ -57,8 +57,13 @@ export const ModalReprogramarCita = ({
 
       setLoadingSlots(true);
       try {
+        const token = localStorage.getItem('token') || (localStorage.getItem('clinica_user') ? JSON.parse(localStorage.getItem('clinica_user'))?.token : null);
+        const headers = { Accept: 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
         const res = await fetch(
-          `${API_ENDPOINTS.disponibilidad}?fecha=${fechaNueva}&id_medico=${idMedicoNuevo}`
+          `${API_ENDPOINTS.disponibilidad}?fecha=${fechaNueva}&id_medico=${idMedicoNuevo}`,
+          { headers }
         );
         if (res.ok) {
           const json = await res.json();

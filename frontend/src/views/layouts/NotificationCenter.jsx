@@ -371,109 +371,139 @@ export const NotificationCenter = ({ currentUser, onNavigateToCU }) => {
 
                     {/* BOTONES DE ACCIÓN RÁPIDA SEGÚN EL TIPO DE AVISO */}
                     <div style={{ marginTop: '0.5rem', display: 'flex', justifyContent: 'flex-end', gap: '0.35rem' }}>
-                      {isEmergencia && onNavigateToCU && (
+                      {notif.action_cu && onNavigateToCU ? (
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             setIsOpen(false);
-                            onNavigateToCU('CU11', 'PKG05');
+                            onNavigateToCU(notif.action_cu, notif.action_pkg || 'PKG05');
                           }}
                           style={{
-                            background: '#ef4444',
+                            background: borderLeftColor,
                             color: '#ffffff',
                             border: 'none',
-                            borderRadius: '5px',
-                            padding: '0.25rem 0.55rem',
+                            borderRadius: '6px',
+                            padding: '0.3rem 0.65rem',
                             fontSize: '0.72rem',
                             fontWeight: 700,
                             cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '4px',
+                            gap: '5px',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
                           }}
                         >
                           <Calendar size={12} />
-                          Reprogramar Cita Ahora
+                          <span>{notif.action_label || 'Ver Detalle'}</span>
                         </button>
-                      )}
+                      ) : (
+                        <>
+                          {isEmergencia && onNavigateToCU && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setIsOpen(false);
+                                onNavigateToCU('CU11', 'PKG05');
+                              }}
+                              style={{
+                                background: '#ef4444',
+                                color: '#ffffff',
+                                border: 'none',
+                                borderRadius: '5px',
+                                padding: '0.25rem 0.55rem',
+                                fontSize: '0.72rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                              }}
+                            >
+                              <Calendar size={12} />
+                              Reprogramar Cita Ahora
+                            </button>
+                          )}
 
-                      {isReserva && onNavigateToCU && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setIsOpen(false);
-                            onNavigateToCU('CU10', 'PKG05');
-                          }}
-                          style={{
-                            background: '#0284c7',
-                            color: '#ffffff',
-                            border: 'none',
-                            borderRadius: '5px',
-                            padding: '0.25rem 0.55rem',
-                            fontSize: '0.72rem',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                          }}
-                        >
-                          Ver Mis Citas / Pagar
-                        </button>
-                      )}
+                          {isReserva && onNavigateToCU && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setIsOpen(false);
+                                onNavigateToCU('CU10', 'PKG05');
+                              }}
+                              style={{
+                                background: '#0284c7',
+                                color: '#ffffff',
+                                border: 'none',
+                                borderRadius: '5px',
+                                padding: '0.25rem 0.55rem',
+                                fontSize: '0.72rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                              }}
+                            >
+                              Ver Mis Citas / Pagar
+                            </button>
+                          )}
 
-                      {isCancelacion && onNavigateToCU && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setIsOpen(false);
-                            onNavigateToCU('CU09', 'PKG04');
-                          }}
-                          style={{
-                            background: '#0284c7',
-                            color: '#ffffff',
-                            border: 'none',
-                            borderRadius: '5px',
-                            padding: '0.25rem 0.55rem',
-                            fontSize: '0.72rem',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                          }}
-                        >
-                          Buscar Nuevo Horario
-                        </button>
-                      )}
+                          {isCancelacion && onNavigateToCU && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setIsOpen(false);
+                                onNavigateToCU('CU09', 'PKG04');
+                              }}
+                              style={{
+                                background: '#0284c7',
+                                color: '#ffffff',
+                                border: 'none',
+                                borderRadius: '5px',
+                                padding: '0.25rem 0.55rem',
+                                fontSize: '0.72rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                              }}
+                            >
+                              Buscar Nuevo Horario
+                            </button>
+                          )}
 
-                      {isLab && onNavigateToCU && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setIsOpen(false);
-                            onNavigateToCU('CU18', 'PKG07');
-                          }}
-                          style={{
-                            background: '#0d9488',
-                            color: '#ffffff',
-                            border: 'none',
-                            borderRadius: '5px',
-                            padding: '0.25rem 0.55rem',
-                            fontSize: '0.72rem',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                          }}
-                        >
-                          Ver Resultado de Laboratorio
-                        </button>
+                          {isLab && onNavigateToCU && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setIsOpen(false);
+                                onNavigateToCU('CU18', 'PKG07');
+                              }}
+                              style={{
+                                background: '#0d9488',
+                                color: '#ffffff',
+                                border: 'none',
+                                borderRadius: '5px',
+                                padding: '0.25rem 0.55rem',
+                                fontSize: '0.72rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                              }}
+                            >
+                              Ver Resultado de Laboratorio
+                            </button>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>

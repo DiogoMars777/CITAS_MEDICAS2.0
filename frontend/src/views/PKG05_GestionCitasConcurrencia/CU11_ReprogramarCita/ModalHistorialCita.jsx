@@ -24,7 +24,11 @@ export const ModalHistorialCita = ({ isOpen, onClose, cita }) => {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(`${API_ENDPOINTS.citas}/${cita.id_cita}/historial`);
+        const token = localStorage.getItem('token') || (localStorage.getItem('clinica_user') ? JSON.parse(localStorage.getItem('clinica_user'))?.token : null);
+        const headers = { Accept: 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const res = await fetch(`${API_ENDPOINTS.citas}/${cita.id_cita}/historial`, { headers });
         if (!res.ok) throw new Error('No se pudo cargar el historial de la cita.');
         const json = await res.json();
         setHistorialData({

@@ -24,6 +24,18 @@ import { API_ENDPOINTS } from '@/config/api';
 const API_BASE = API_ENDPOINTS.citas;
 
 export const CU11_ReprogramarCitaView = ({ currentUser = null }) => {
+  const storedUser = React.useMemo(() => {
+    try {
+      const fromStorage = localStorage.getItem('clinica_user') ? JSON.parse(localStorage.getItem('clinica_user')) : null;
+      return currentUser || fromStorage || {};
+    } catch {
+      return currentUser || {};
+    }
+  }, [currentUser]);
+
+  const userRole = String(storedUser?.rol || storedUser?.role || storedUser?.nombre_rol || '').toUpperCase().trim();
+  const token = storedUser?.token || localStorage.getItem('token') || (localStorage.getItem('clinica_user') ? JSON.parse(localStorage.getItem('clinica_user'))?.token : null);
+
   const [citas, setCitas] = useState([]);
   const [pagination, setPagination] = useState({ currentPage: 1, lastPage: 1, perPage: 15, total: 0 });
   const [kpis, setKpis] = useState({
@@ -57,15 +69,19 @@ export const CU11_ReprogramarCitaView = ({ currentUser = null }) => {
       if (searchTerm.trim()) params.append('search', searchTerm.trim());
       if (filterMedico) params.append('id_medico', filterMedico);
       if (filterFecha) params.append('fecha', filterFecha);
-      if (currentUser?.id_paciente) params.append('id_paciente', String(currentUser.id_paciente));
+      
+      const isPaciente = ['PACIENTE', 'CLIENTE'].includes(userRole);
+      if (isPaciente && storedUser?.id_paciente) {
+        params.append('id_paciente', String(storedUser.id_paciente));
+      }
 
       const headers = { Accept: 'application/json' };
-      if (currentUser?.token) headers['Authorization'] = `Bearer ${currentUser.token}`;
+      if (token) headers['Authorization'] = `Bearer ${token}`;
 
       const res = await fetch(`${API_BASE}?${params.toString()}`, { headers });
       const data = await res.json();
 
-      if (data.success) {
+      if (data.success && data.data) {
         setCitas(data.data.data || []);
         setPagination({
           currentPage: data.data.current_page || 1,
@@ -74,17 +90,21 @@ export const CU11_ReprogramarCitaView = ({ currentUser = null }) => {
           total: data.data.total || 0,
         });
         if (data.kpis) setKpis(data.kpis);
+      } else {
+        setCitas([]);
       }
     } catch (err) {
       setError(err.message || 'Error al obtener citas médicas.');
     } finally {
       setLoading(false);
     }
-  }, [searchTerm, filterMedico, filterFecha, currentUser?.id_paciente, currentUser?.token]);
+  }, [searchTerm, filterMedico, filterFecha, storedUser?.id_paciente, token, userRole]);
 
   const fetchMeta = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/meta`);
+      const headers = { Accept: 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const res = await fetch(`${API_BASE}/meta`, { headers });
       const data = await res.json();
       if (data.success) {
         setMedicosMeta(data.medicos || []);
@@ -92,7 +112,7 @@ export const CU11_ReprogramarCitaView = ({ currentUser = null }) => {
     } catch (err) {
       console.error('Error al cargar metadatos:', err);
     }
-  }, []);
+  }, [token]);
 
   useEffect(() => {
     fetchMeta();
@@ -333,18 +353,15 @@ export const CU11_ReprogramarCitaView = ({ currentUser = null }) => {
 
                         <button
                           onClick={() => {
-                            if (!isPaid) {
-                              alert('No es posible reprogramar una cita no pagada. La política de la clínica exige registrar el pago previo para acceder a la reprogramación.');
-                              return;
-                            }
+                            if (!canReprogram) return;
                             setSelectedCitaForReprogram(c);
                           }}
                           disabled={!canReprogram}
                           title={
                             esTerminalInmutable
                               ? `Cita en estado ${c.estado_cita}: No puede ser reprogramada`
-                              : !isPaid
-                              ? 'Solo citas pagadas pueden reprogramarse'
+                              : !canReprogram
+                              ? 'Cita no habilitada para reprogramación'
                               : 'Reprogramar cita médica'
                           }
                           style={{
@@ -363,14 +380,14 @@ export const CU11_ReprogramarCitaView = ({ currentUser = null }) => {
                           }}
                           onMouseEnter={(e) => {
                             if (canReprogram) {
-                              e.currentTarget.style.background = '#0284c7';
+                              e.currentTarget.style.background = '#0369a1';
                               e.currentTarget.style.color = '#ffffff';
                             }
                           }}
                           onMouseLeave={(e) => {
                             if (canReprogram) {
-                              e.currentTarget.style.background = '#e0f2fe';
-                              e.currentTarget.style.color = '#0284c7';
+                              e.currentTarget.style.background = '#0284c7';
+                              e.currentTarget.style.color = '#ffffff';
                             }
                           }}
                         >
@@ -386,6 +403,58 @@ export const CU11_ReprogramarCitaView = ({ currentUser = null }) => {
           </tbody>
         </table>
       </div>
+
+      {/* PAGINACIÓN */}
+      {pagination.total > 0 && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', marginTop: '1rem', background: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(15, 23, 42, 0.04)' }}>
+          <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
+            Mostrando <strong>{citas.length}</strong> de <strong>{pagination.total}</strong> citas registradas
+          </span>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <button
+              onClick={() => fetchCitas(pagination.currentPage - 1)}
+              disabled={pagination.currentPage <= 1 || loading}
+              style={{
+                padding: '0.4rem 0.75rem',
+                borderRadius: '8px',
+                border: '1px solid #cbd5e1',
+                background: '#ffffff',
+                color: pagination.currentPage <= 1 ? '#cbd5e1' : '#334155',
+                cursor: pagination.currentPage <= 1 ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                fontSize: '0.8rem',
+                fontWeight: 600,
+              }}
+            >
+              <ChevronLeft size={14} /> Anterior
+            </button>
+            <span style={{ fontSize: '0.8rem', color: '#475569', fontWeight: 600 }}>
+              Página {pagination.currentPage} de {pagination.lastPage}
+            </span>
+            <button
+              onClick={() => fetchCitas(pagination.currentPage + 1)}
+              disabled={pagination.currentPage >= pagination.lastPage || loading}
+              style={{
+                padding: '0.4rem 0.75rem',
+                borderRadius: '8px',
+                border: '1px solid #cbd5e1',
+                background: '#ffffff',
+                color: pagination.currentPage >= pagination.lastPage ? '#cbd5e1' : '#334155',
+                cursor: pagination.currentPage >= pagination.lastPage ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                fontSize: '0.8rem',
+                fontWeight: 600,
+              }}
+            >
+              Siguiente <ChevronRight size={14} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* MODAL REPROGRAMAR CITA */}
       <ModalReprogramarCita

@@ -724,4 +724,49 @@ class ClinicaVidaSaludTest extends TestCase
         $this->assertEquals('EMERGENCIA', $notifEmergencia['tipo']);
         $this->assertStringContainsString('Cirugía de urgencia', $notifEmergencia['mensaje']);
     }
+
+    /**
+     * Test 24: Verificación estricta de aislamiento de notificaciones por Rol (RBAC)
+     * Ni Recepcionista, ni Médico, ni Administrador deben recibir mensajes dirigidos al Paciente.
+     */
+    public function test_24_notificaciones_aisladas_estrictamente_por_rol(): void
+    {
+        // 1. Recepcionista: Cero mensajes de WhatsApp a pacientes
+        Sanctum::actingAs($this->recepcionista);
+        $resRec = $this->getJson('/api/notificaciones');
+        $resRec->assertStatus(200);
+        $notifsRec = $resRec->json('data');
+        foreach ($notifsRec as $n) {
+            $this->assertStringNotContainsString('Estimado(a)', $n['mensaje'], 'Recepcionista no debe recibir mensajes directos a pacientes.');
+            $this->assertContains($n['canal'], ['RECEPCIÓN', 'CAJA']);
+        }
+
+        // 2. Médico: Cero mensajes de WhatsApp a pacientes
+        Sanctum::actingAs($this->medico);
+        $resMed = $this->getJson('/api/notificaciones');
+        $resMed->assertStatus(200);
+        $notifsMed = $resMed->json('data');
+        foreach ($notifsMed as $n) {
+            $this->assertStringNotContainsString('Estimado(a)', $n['mensaje'], 'Médico no debe recibir mensajes directos a pacientes.');
+            $this->assertContains($n['canal'], ['CLÍNICA', 'LABORATORIO', 'AGENDA']);
+        }
+
+        // 3. Administrador: Cero mensajes de WhatsApp a pacientes
+        Sanctum::actingAs($this->admin);
+        $resAdm = $this->getJson('/api/notificaciones');
+        $resAdm->assertStatus(200);
+        $notifsAdm = $resAdm->json('data');
+        foreach ($notifsAdm as $n) {
+            $this->assertStringNotContainsString('Estimado(a)', $n['mensaje'], 'Administrador no debe recibir mensajes directos a pacientes.');
+        }
+
+        // 4. Paciente: Solo mensajes vinculados a sus citas
+        Sanctum::actingAs($this->paciente);
+        $resPac = $this->getJson('/api/notificaciones');
+        $resPac->assertStatus(200);
+        $notifsPac = $resPac->json('data');
+        foreach ($notifsPac as $n) {
+            $this->assertNotNull($n['id_cita'], 'Las notificaciones del paciente deben pertenecer a sus citas.');
+        }
+    }
 }
