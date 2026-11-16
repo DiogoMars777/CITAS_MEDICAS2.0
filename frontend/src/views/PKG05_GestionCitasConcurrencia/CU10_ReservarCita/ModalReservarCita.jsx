@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   X,
   Calendar,
@@ -65,53 +65,53 @@ export const ModalReservarCita = ({
   }, [formData.id_especialidad, filteredMedicos, formData.id_medico]);
 
   // Cargar slots disponibles cuando cambie médico o fecha
-  useEffect(() => {
-    const fetchSlotsDisponibles = async () => {
-      if (!formData.id_medico || !formData.fecha_cita) {
-        setAvailableSlots([]);
-        setProximosDias([]);
-        return;
-      }
+  const fetchSlotsDisponibles = useCallback(async () => {
+    if (!formData.id_medico || !formData.fecha_cita) {
+      setAvailableSlots([]);
+      setProximosDias([]);
+      return;
+    }
 
-      setLoadingSlots(true);
-      try {
-        const res = await fetch(
-          `${API_ENDPOINTS.disponibilidad}?fecha=${formData.fecha_cita}&id_medico=${formData.id_medico}`
-        );
-        if (res.ok) {
-          const json = await res.json();
-          const doc = json.medicos?.[0];
-          const slots = doc?.slots || [];
-          setAvailableSlots(slots);
-          setProximosDias(json.proximos_dias || []);
+    setLoadingSlots(true);
+    try {
+      const res = await fetch(
+        `${API_ENDPOINTS.disponibilidad}?fecha=${formData.fecha_cita}&id_medico=${formData.id_medico}`
+      );
+      if (res.ok) {
+        const json = await res.json();
+        const doc = json.medicos?.[0];
+        const slots = doc?.slots || [];
+        setAvailableSlots(slots);
+        setProximosDias(json.proximos_dias || []);
 
-          // Si el horario actual no está seleccionado o no está disponible, auto-seleccionar el primer cupo libre
-          const primerLibre = slots.find((s) => s.estado === 'DISPONIBLE');
-          if (primerLibre) {
-            setFormData((prev) => {
-              // Si ya tiene un slot libre seleccionado, mantenerlo
-              const currentSlotLibre = slots.find(
-                (s) => s.hora_inicio === prev.hora_inicio && s.estado === 'DISPONIBLE'
-              );
-              if (currentSlotLibre) return prev;
+        // Si el horario actual no está seleccionado o no está disponible, auto-seleccionar el primer cupo libre
+        const primerLibre = slots.find((s) => s.estado === 'DISPONIBLE');
+        if (primerLibre) {
+          setFormData((prev) => {
+            // Si ya tiene un slot libre seleccionado, mantenerlo
+            const currentSlotLibre = slots.find(
+              (s) => s.hora_inicio === prev.hora_inicio && s.estado === 'DISPONIBLE'
+            );
+            if (currentSlotLibre) return prev;
 
-              return {
-                ...prev,
-                hora_inicio: primerLibre.hora_inicio,
-                hora_fin: primerLibre.hora_fin,
-              };
-            });
-          }
+            return {
+              ...prev,
+              hora_inicio: primerLibre.hora_inicio,
+              hora_fin: primerLibre.hora_fin,
+            };
+          });
         }
-      } catch (err) {
-        console.error('Error cargando slots disponibles:', err);
-      } finally {
-        setLoadingSlots(false);
       }
-    };
-
-    fetchSlotsDisponibles();
+    } catch (err) {
+      console.error('Error cargando slots disponibles:', err);
+    } finally {
+      setLoadingSlots(false);
+    }
   }, [formData.id_medico, formData.fecha_cita]);
+
+  useEffect(() => {
+    fetchSlotsDisponibles();
+  }, [fetchSlotsDisponibles]);
 
   if (!isOpen) return null;
 
@@ -154,9 +154,14 @@ export const ModalReservarCita = ({
       const res = await onSave(payload);
       if (res && !res.success) {
         setLocalError(res.message || 'Error al procesar la reserva.');
+        // En caso de conflicto de concurrencia, refrescar inmediatamente la disponibilidad para reflejar el cupo tomado
+        fetchSlotsDisponibles();
+        setFormData((prev) => ({ ...prev, hora_inicio: '', hora_fin: '' }));
       }
     } catch (err) {
       setLocalError(err.message || 'Error al procesar la reserva.');
+      fetchSlotsDisponibles();
+      setFormData((prev) => ({ ...prev, hora_inicio: '', hora_fin: '' }));
     }
   };
 

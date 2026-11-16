@@ -115,7 +115,7 @@ class CitaService
             throw new HttpException(403, 'Acceso denegado: el personal médico no puede reservar citas desde este módulo.');
         }
 
-        // 15. Nueva comprobación dentro de la transacción con lock pesimista
+        // 15. Control de Concurrencia de Nivel Industrial (Advisory Locks + Lock Pesimista + Unique Constraint)
         try {
             return DB::transaction(function () use (
                 $idPaciente, $idMedico, $idEspecialidad, $fechaCita,
@@ -124,7 +124,20 @@ class CitaService
                 $horaIniFull = $horaInicio . ':00';
                 $horaFinFull = $horaFin . ':00';
 
-                // Verificación pesimista en DB
+                // A) Candado consultivo de transacción a nivel de PostgreSQL por médico y fecha
+                // Garantiza exclusión mutua atómica entre solicitudes simultáneas al mismo médico y día.
+                if (DB::getDriverName() === 'pgsql') {
+                    DB::statement(
+                        "SELECT pg_advisory_xact_lock(hashtext(?))",
+                        ["reserva_agenda_medico_{$idMedico}_{$fechaCita}"]
+                    );
+                    DB::statement(
+                        "SELECT pg_advisory_xact_lock(hashtext(?))",
+                        ["reserva_agenda_paciente_{$idPaciente}_{$fechaCita}"]
+                    );
+                }
+
+                // B) Verificación de conflicto de horario del médico (superposición de intervalos)
                 $conflicto = Cita::where('id_medico', $idMedico)
                     ->whereDate('fecha_cita', $fechaCita)
                     ->whereNotIn('estado_cita', ['CANCELADA'])
@@ -134,7 +147,20 @@ class CitaService
                     ->first();
 
                 if ($conflicto) {
-                    throw new HttpException(409, "Conflicto de concurrencia: el horario {$horaInicio} - {$horaFin} acaba de ser reservado (Cita #{$conflicto->codigo_cita}). Seleccione otro horario.");
+                    throw new HttpException(409, "Conflicto de concurrencia: el horario {$horaInicio} - {$horaFin} acaba de ser reservado por otro usuario (Cita #{$conflicto->codigo_cita}). Por favor seleccione otro cupo libre.");
+                }
+
+                // C) Verificación de conflicto de horario del paciente (un paciente no puede tener dos citas superpuestas)
+                $conflictoPaciente = Cita::where('id_paciente', $idPaciente)
+                    ->whereDate('fecha_cita', $fechaCita)
+                    ->whereNotIn('estado_cita', ['CANCELADA'])
+                    ->where('hora_inicio', '<', $horaFinFull)
+                    ->where('hora_fin', '>', $horaIniFull)
+                    ->first();
+
+                if ($conflictoPaciente) {
+                    $medConf = $conflictoPaciente->medico ? "Dr(a). {$conflictoPaciente->medico->nombre_completo}" : 'otro profesional';
+                    throw new HttpException(409, "Conflicto de horario: El paciente ya cuenta con una cita médica reservada en este mismo horario ({$horaInicio} - {$horaFin}) con {$medConf}.");
                 }
 
                 // Generar código único CIT-YYYYMMDD-XXXX
@@ -160,13 +186,13 @@ class CitaService
                     'fecha_creacion'  => $nowBolivia,
                 ]);
 
-                // Crear registro de reserva con token
-                $fechaExpira = Carbon::parse("{$fechaCita} {$horaInicio}", $this->timezone)->subDay();
+                // Crear registro de reserva temporal con vigencia de 1 hora (política clínica de pago)
+                $fechaExpira = $nowBolivia->copy()->addMinutes(60);
                 DB::table('reservas')->insert([
                     'id_cita'          => $cita->id_cita,
                     'id_paciente'      => $idPaciente,
                     'token_reserva'    => (string) Str::uuid(),
-                    'fecha_expiracion' => $fechaExpira->isPast() ? $nowBolivia->copy()->addHours(2) : $fechaExpira,
+                    'fecha_expiracion' => $fechaExpira,
                     'estado_reserva'   => 'PENDIENTE',
                 ]);
 
@@ -277,7 +303,7 @@ class CitaService
             throw new HttpException(422, $checkDisp['error']);
         }
 
-        // Transacción atómica
+        // Transacción atómica con control de concurrencia industrial
         try {
             return DB::transaction(function () use (
                 $cita, $fechaNueva, $horaIniNueva, $horaFinNueva,
@@ -286,7 +312,19 @@ class CitaService
                 $horaIniFull = $horaIniNueva . ':00';
                 $horaFinFull = $horaFinNueva . ':00';
 
-                // Verificación pesimista
+                // Candados consultivos a nivel de PostgreSQL por médico/fecha y paciente/fecha
+                if (DB::getDriverName() === 'pgsql') {
+                    DB::statement(
+                        "SELECT pg_advisory_xact_lock(hashtext(?))",
+                        ["reserva_agenda_medico_{$idMedicoNuevo}_{$fechaNueva}"]
+                    );
+                    DB::statement(
+                        "SELECT pg_advisory_xact_lock(hashtext(?))",
+                        ["reserva_agenda_paciente_{$cita->id_paciente}_{$fechaNueva}"]
+                    );
+                }
+
+                // Verificación pesimista de agenda del médico
                 $conflicto = Cita::where('id_medico', $idMedicoNuevo)
                     ->whereDate('fecha_cita', $fechaNueva)
                     ->where('id_cita', '!=', $cita->id_cita)
@@ -297,7 +335,20 @@ class CitaService
                     ->first();
 
                 if ($conflicto) {
-                    throw new HttpException(409, "Conflicto de concurrencia: El cupo {$horaIniNueva} - {$horaFinNueva} acaba de ser reservado. Elija otro horario.");
+                    throw new HttpException(409, "Conflicto de concurrencia: El cupo {$horaIniNueva} - {$horaFinNueva} acaba de ser reservado por otro usuario. Por favor elija otro horario.");
+                }
+
+                // Verificación de conflicto de agenda del paciente
+                $conflictoPaciente = Cita::where('id_paciente', $cita->id_paciente)
+                    ->whereDate('fecha_cita', $fechaNueva)
+                    ->where('id_cita', '!=', $cita->id_cita)
+                    ->whereNotIn('estado_cita', ['CANCELADA'])
+                    ->where('hora_inicio', '<', $horaFinFull)
+                    ->where('hora_fin', '>', $horaIniFull)
+                    ->first();
+
+                if ($conflictoPaciente) {
+                    throw new HttpException(409, "Conflicto de agenda: El paciente ya tiene otra cita médica en el horario {$horaIniNueva} - {$horaFinNueva}.");
                 }
 
                 // Guardar datos anteriores
